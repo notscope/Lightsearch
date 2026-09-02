@@ -143,18 +143,23 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     private func open(_ application: InstalledApplication) {
-        let applicationURL = URL(fileURLWithPath: application.path)
-        if NSWorkspace.shared.open(applicationURL) {
-            state.recordLaunch(of: application)
-        }
         hide()
+        let applicationURL = URL(fileURLWithPath: application.path)
+        Task.detached(priority: .userInitiated) { [weak self, state = self.state] in
+            if NSWorkspace.shared.open(applicationURL) {
+                await state.recordLaunch(of: application)
+            }
+        }
     }
 
     private func open(_ file: SearchFile) {
-        if NSWorkspace.shared.open(URL(fileURLWithPath: file.path)) {
-            state.recordOpen(of: file)
-        }
         hide()
+        let fileURL = URL(fileURLWithPath: file.path)
+        Task.detached(priority: .userInitiated) { [weak self, state = self.state] in
+            if NSWorkspace.shared.open(fileURL) {
+                await state.recordOpen(of: file)
+            }
+        }
     }
 
     private func positionPanel() {
