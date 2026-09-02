@@ -150,7 +150,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     private func open(_ application: InstalledApplication) {
         hide()
         let applicationURL = URL(fileURLWithPath: application.path)
-        Task.detached(priority: .userInitiated) { [weak self, state = self.state] in
+        Task.detached(priority: .userInitiated) { [state = self.state] in
             if NSWorkspace.shared.open(applicationURL) {
                 await state.recordLaunch(of: application)
             }
@@ -160,7 +160,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     private func open(_ file: SearchFile) {
         hide()
         let fileURL = URL(fileURLWithPath: file.path)
-        Task.detached(priority: .userInitiated) { [weak self, state = self.state] in
+        Task.detached(priority: .userInitiated) { [state = self.state] in
             if NSWorkspace.shared.open(fileURL) {
                 await state.recordOpen(of: file)
             }
