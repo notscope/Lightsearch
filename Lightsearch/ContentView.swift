@@ -111,7 +111,7 @@ struct ContentView: View {
                     : "Search for apps and commands...",
                 onViewCreated: onSearchFieldReady
             )
-            .frame(height: 32)
+            .frame(height: 26)
 
             if state.isFileSearchPage {
                 if !state.query.isEmpty {
