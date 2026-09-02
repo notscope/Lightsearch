@@ -390,7 +390,6 @@ final class LauncherState: ObservableObject {
     @Published var query = "" {
         didSet {
             selectedIndex = 0
-            isKeyboardNavigating = false
             if page == .applications {
                 rememberNonEmptyResults()
             } else {
@@ -405,7 +404,6 @@ final class LauncherState: ObservableObject {
     @Published private(set) var isLoading = true
     @Published private(set) var isFileSearchLoading = false
     @Published var selectedIndex = 0
-    @Published private(set) var isKeyboardNavigating = false
 
     private var hasStartedLoading = false
     private let launchHistory = ApplicationLaunchHistory()
@@ -482,13 +480,8 @@ final class LauncherState: ObservableObject {
         let count = isFileSearchPage ? visibleFileResults.count : visibleResults.count
         guard count > 0 else { return }
 
-        isKeyboardNavigating = true
         let nextIndex = selectedIndex + offset
         selectedIndex = ((nextIndex % count) + count) % count
-    }
-
-    func notePointerMovement() {
-        isKeyboardNavigating = false
     }
 
     func selectedResult() -> LauncherResult? {

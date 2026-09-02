@@ -12,7 +12,6 @@ final class LauncherController: NSObject, NSWindowDelegate {
     private let state = LauncherState()
     private let hotKey = GlobalHotKey()
     private var localKeyMonitor: Any?
-    private var localMouseMonitor: Any?
     private var searchField: NSSearchField?
 
     private let panel: LauncherPanel
@@ -30,7 +29,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        panel.acceptsMouseMovedEvents = true
+        panel.acceptsMouseMovedEvents = false
         panel.animationBehavior = .none
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -68,7 +67,6 @@ final class LauncherController: NSObject, NSWindowDelegate {
     func start() {
         state.loadIfNeeded()
         installLocalKeyMonitor()
-        installLocalMouseMonitor()
 
         let registered = hotKey.register { [weak self] in
             self?.toggle()
@@ -84,10 +82,6 @@ final class LauncherController: NSObject, NSWindowDelegate {
         if let localKeyMonitor {
             NSEvent.removeMonitor(localKeyMonitor)
             self.localKeyMonitor = nil
-        }
-        if let localMouseMonitor {
-            NSEvent.removeMonitor(localMouseMonitor)
-            self.localMouseMonitor = nil
         }
     }
 
@@ -229,17 +223,6 @@ final class LauncherController: NSObject, NSWindowDelegate {
             default:
                 return event
             }
-        }
-    }
-
-    private func installLocalMouseMonitor() {
-        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
-            guard let self, self.panel.isVisible, event.window === self.panel else {
-                return event
-            }
-
-            self.state.notePointerMovement()
-            return event
         }
     }
 

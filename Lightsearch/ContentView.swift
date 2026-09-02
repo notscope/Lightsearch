@@ -162,11 +162,6 @@ struct ContentView: View {
                             ForEach(Array(state.visibleResults.enumerated()), id: \.element.id) { index, result in
                                 resultRow(result, at: index)
                                     .id(result.id)
-                                    .onHover { isHovering in
-                                        if isHovering && !state.isKeyboardNavigating {
-                                            state.selectedIndex = index
-                                        }
-                                    }
                             }
                         }
                     }
@@ -264,11 +259,6 @@ struct ContentView: View {
                                     onOpenFile(file)
                                 }
                                 .id(file.id)
-                                .onHover { isHovering in
-                                    if isHovering && !state.isKeyboardNavigating {
-                                        state.selectedIndex = index
-                                    }
-                                }
                             }
                         }
                         .padding(.horizontal, 2)
@@ -318,11 +308,6 @@ struct ContentView: View {
                                     onOpenFile(file)
                                 }
                                 .id(file.id)
-                                .onHover { isHovering in
-                                    if isHovering && !state.isKeyboardNavigating {
-                                        state.selectedIndex = index
-                                    }
-                                }
                             }
                         }
                         .padding(.horizontal, 2)
