@@ -385,7 +385,7 @@ enum InstalledApplicationScanner {
 
 @MainActor
 final class LauncherState: ObservableObject {
-    private let minimumVisibleResults = 9
+    private let minimumVisibleResults = LauncherMetrics.visibleEntryCount
 
     @Published var query = "" {
         didSet {

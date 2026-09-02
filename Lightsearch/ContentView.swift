@@ -8,6 +8,22 @@
 import AppKit
 import SwiftUI
 
+enum LauncherMetrics {
+    static let panelWidth: CGFloat = 680
+    static let collapsedHeight: CGFloat = 64
+    static let rowHeight: CGFloat = 54
+    static let rowSpacing: CGFloat = 5
+    static let verticalInset: CGFloat = 12
+    static let visibleEntryCount: Int = 7
+
+    /// Dynamically computed height to fit exactly `visibleEntryCount` entries before scrolling
+    static var expandedHeight: CGFloat {
+        let entriesHeight = (CGFloat(visibleEntryCount) * rowHeight) + (CGFloat(visibleEntryCount - 1) * rowSpacing)
+        let listContentHeight = (verticalInset * 2) + entriesHeight
+        return collapsedHeight + listContentHeight
+    }
+}
+
 struct ContentView: View {
     @ObservedObject var state: LauncherState
 
@@ -40,7 +56,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             searchBar
                 .frame(maxWidth: .infinity)
-                .frame(height: 64)
+                .frame(height: LauncherMetrics.collapsedHeight)
 
             if showsExpandedContent {
                 Divider()
@@ -55,7 +71,10 @@ struct ContentView: View {
                 .padding(.horizontal, 12)
             }
         }
-        .frame(width: 680, height: showsExpandedContent ? 560 : 64)
+        .frame(
+            width: LauncherMetrics.panelWidth,
+            height: showsExpandedContent ? LauncherMetrics.expandedHeight : LauncherMetrics.collapsedHeight
+        )
         .foregroundStyle(.primary)
         .lightsearchGlass(cornerRadius: 28)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -148,7 +167,7 @@ struct ContentView: View {
     private var results: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical) {
-                LazyVStack(spacing: 5) {
+                LazyVStack(spacing: LauncherMetrics.rowSpacing) {
                     if state.visibleResults.isEmpty {
                         if state.isLoading && state.applications.isEmpty {
                             loadingState
@@ -163,8 +182,8 @@ struct ContentView: View {
                     }
                 }
                 .padding(.horizontal, 2)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+                .padding(.top, LauncherMetrics.verticalInset)
+                .padding(.bottom, LauncherMetrics.verticalInset)
             }
             .scrollIndicators(.never)
             .onChange(of: state.selectedIndex) { _, newIndex in
@@ -509,7 +528,7 @@ private struct SearchResultRow<Icon: View>: View {
             }
         }
         .padding(.horizontal, 12)
-        .frame(height: 54)
+        .frame(height: LauncherMetrics.rowHeight)
         .background {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(isSelected ? Color.accentColor : Color.clear)

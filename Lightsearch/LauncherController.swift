@@ -18,7 +18,12 @@ final class LauncherController: NSObject, NSWindowDelegate {
 
     override init() {
         panel = LauncherPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 680, height: 64),
+            contentRect: NSRect(
+                x: 0,
+                y: 0,
+                width: LauncherMetrics.panelWidth,
+                height: LauncherMetrics.collapsedHeight
+            ),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: true
@@ -175,7 +180,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     private func updatePanelSize(isExpanded: Bool) {
-        let targetHeight: CGFloat = isExpanded ? 560 : 64
+        let targetHeight: CGFloat = isExpanded ? LauncherMetrics.expandedHeight : LauncherMetrics.collapsedHeight
         guard abs(panel.frame.height - targetHeight) > 0.5 else { return }
 
         let currentFrame = panel.frame
@@ -183,7 +188,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
         let resizedFrame = NSRect(
             x: currentFrame.minX,
             y: currentFrame.maxY - targetHeight,
-            width: 680,
+            width: LauncherMetrics.panelWidth,
             height: targetHeight
         )
         panel.setFrame(resizedFrame, display: true, animate: false)
