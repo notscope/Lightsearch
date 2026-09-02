@@ -182,9 +182,8 @@ struct ContentView: View {
                     }
                 }
                 .padding(.horizontal, 2)
-                .padding(.top, LauncherMetrics.verticalInset)
-                .padding(.bottom, LauncherMetrics.verticalInset)
             }
+            .contentMargins(.vertical, LauncherMetrics.verticalInset, for: .scrollContent)
             .scrollIndicators(.never)
             .onChange(of: state.selectedIndex) { _, newIndex in
                 guard state.visibleResults.indices.contains(newIndex) else { return }
@@ -292,8 +291,8 @@ struct ContentView: View {
                             }
                         }
                         .padding(.horizontal, 2)
-                        .padding(.bottom, 12)
                     }
+                    .contentMargins(.bottom, 12, for: .scrollContent)
                     .scrollIndicators(.never)
                     .onChange(of: state.selectedIndex) { _, newIndex in
                         guard state.visibleFileResults.indices.contains(newIndex) else { return }
@@ -347,8 +346,8 @@ struct ContentView: View {
                             }
                         }
                         .padding(.horizontal, 2)
-                        .padding(.bottom, 12)
                     }
+                    .contentMargins(.bottom, 12, for: .scrollContent)
                     .scrollIndicators(.never)
                     .onChange(of: state.selectedIndex) { _, newIndex in
                         guard state.visibleFileResults.indices.contains(newIndex) else { return }
