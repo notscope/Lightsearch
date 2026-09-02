@@ -413,6 +413,7 @@ final class LauncherState: ObservableObject {
 
     init(previewApplications: [InstalledApplication] = []) {
         applications = previewApplications
+        previousResults = previewApplications
         isLoading = previewApplications.isEmpty
     }
 
@@ -461,6 +462,7 @@ final class LauncherState: ObservableObject {
 
             guard !Task.isCancelled else { return }
             self?.applications = applications
+            self?.previousResults = applications
             self?.isLoading = false
             self?.selectedIndex = 0
             self?.rememberNonEmptyResults()
@@ -560,7 +562,22 @@ final class LauncherState: ObservableObject {
     }
 
     private var displayedResults: [LauncherResult] {
-        filteredLauncherResults
+        var results = filteredLauncherResults
+        guard results.count < LauncherMetrics.visibleEntryCount, !applications.isEmpty else {
+            return results
+        }
+
+        var seenIDs = Set(results.map(\.id))
+        let fallbackCandidates = previousResults + applications
+
+        for application in fallbackCandidates where seenIDs.insert(application.id).inserted {
+            results.append(.application(application))
+            if results.count >= LauncherMetrics.visibleEntryCount {
+                break
+            }
+        }
+
+        return results
     }
 
     private var filteredLauncherResults: [LauncherResult] {
