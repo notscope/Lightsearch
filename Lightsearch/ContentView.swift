@@ -188,22 +188,30 @@ struct ContentView: View {
                     .font(.body.weight(.medium))
                     .foregroundStyle(.secondary),
                 isSelected: state.selectedIndex == index,
-                accessibilityHint: "Search files and folders"
-            ) {
-                state.selectedIndex = index
-                onOpenFileSearch()
-            }
+                accessibilityHint: "Search files and folders",
+                onSelect: {
+                    state.selectedIndex = index
+                },
+                onOpen: {
+                    state.selectedIndex = index
+                    onOpenFileSearch()
+                }
+            )
         case let .application(application):
             SearchResultRow(
                 title: application.name,
                 subtitle: application.bundleIdentifier ?? application.path,
                 icon: WorkspaceIconView(path: application.path),
                 isSelected: state.selectedIndex == index,
-                accessibilityHint: "Opens the application"
-            ) {
-                state.selectedIndex = index
-                onOpen(application)
-            }
+                accessibilityHint: "Opens the application",
+                onSelect: {
+                    state.selectedIndex = index
+                },
+                onOpen: {
+                    state.selectedIndex = index
+                    onOpen(application)
+                }
+            )
         }
     }
 
@@ -253,11 +261,15 @@ struct ContentView: View {
                                     subtitle: file.parentPath,
                                     icon: WorkspaceIconView(path: file.path),
                                     isSelected: state.selectedIndex == index,
-                                    accessibilityHint: file.isDirectory ? "Opens the folder" : "Opens the file"
-                                ) {
-                                    state.selectedIndex = index
-                                    onOpenFile(file)
-                                }
+                                    accessibilityHint: file.isDirectory ? "Opens the folder" : "Opens the file",
+                                    onSelect: {
+                                        state.selectedIndex = index
+                                    },
+                                    onOpen: {
+                                        state.selectedIndex = index
+                                        onOpenFile(file)
+                                    }
+                                )
                                 .id(file.id)
                             }
                         }
@@ -302,11 +314,15 @@ struct ContentView: View {
                             ForEach(Array(state.visibleFileResults.enumerated()), id: \.element.id) { index, file in
                                 RecentFileCard(
                                     file: file,
-                                    isSelected: state.selectedIndex == index
-                                ) {
-                                    state.selectedIndex = index
-                                    onOpenFile(file)
-                                }
+                                    isSelected: state.selectedIndex == index,
+                                    onSelect: {
+                                        state.selectedIndex = index
+                                    },
+                                    onOpen: {
+                                        state.selectedIndex = index
+                                        onOpenFile(file)
+                                    }
+                                )
                                 .id(file.id)
                             }
                         }
@@ -390,54 +406,59 @@ struct ContentView: View {
 private struct RecentFileCard: View {
     let file: SearchFile
     let isSelected: Bool
-    let action: () -> Void
+    let onSelect: () -> Void
+    let onOpen: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                VStack(alignment: .leading, spacing: 7) {
-                    WorkspaceIconView(path: file.path)
-                        .frame(width: 38, height: 38)
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 7) {
+                WorkspaceIconView(path: file.path)
+                    .frame(width: 38, height: 38)
 
-                    Text(file.name)
-                        .font(.body.weight(.medium))
-                        .lineLimit(1)
+                Text(file.name)
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
 
-                    Text(file.parentPath)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                Text(file.parentPath)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                if isSelected {
-                    HStack(spacing: 7) {
-                        Image(systemName: "return")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
+            if isSelected {
+                HStack(spacing: 7) {
+                    Image(systemName: "return")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
 
-                        Image(systemName: "arrow.up.right")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                    }
+                    Image(systemName: "arrow.up.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
                 }
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 104, maxHeight: 104, alignment: .topLeading)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? Color.accentColor : Color.clear)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(
-                        isSelected ? Color.clear : Color(nsColor: .separatorColor).opacity(0.4),
-                        lineWidth: 0.7
-                    )
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 104, maxHeight: 104, alignment: .topLeading)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isSelected ? Color.accentColor : Color.clear)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(
+                    isSelected ? Color.clear : Color(nsColor: .separatorColor).opacity(0.4),
+                    lineWidth: 0.7
+                )
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .onTapGesture(count: 2) {
+            onOpen()
+        }
+        .onTapGesture(count: 1) {
+            onSelect()
+        }
+        .accessibilityElement(children: .combine)
         .accessibilityLabel(file.name)
         .accessibilityHint(file.isDirectory ? "Opens the folder" : "Opens the file")
     }
@@ -449,51 +470,56 @@ private struct SearchResultRow<Icon: View>: View {
     let icon: Icon
     let isSelected: Bool
     let accessibilityHint: String
-    let action: () -> Void
+    let onSelect: () -> Void
+    let onOpen: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 13) {
-                icon
-                    .frame(width: 34, height: 34)
+        HStack(spacing: 13) {
+            icon
+                .frame(width: 34, height: 34)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.title3.weight(.medium))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.system(.subheadline, design: .monospaced))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .opacity(isSelected ? 0.85 : 1.0)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            if isSelected {
+                HStack(spacing: 7) {
+                    Image(systemName: "return")
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(.primary)
-                        .lineLimit(1)
 
-                    Text(subtitle)
-                        .font(.system(.subheadline, design: .monospaced))
-                        .foregroundStyle(isSelected ? .primary : .secondary)
-                        .opacity(isSelected ? 0.85 : 1.0)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 12)
-
-                if isSelected {
-                    HStack(spacing: 7) {
-                        Image(systemName: "return")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-
-                        Image(systemName: "arrow.up.right")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .transition(.opacity)
-                    }
+                    Image(systemName: "arrow.up.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .transition(.opacity)
                 }
             }
-            .padding(.horizontal, 12)
-            .frame(height: 54)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? Color.accentColor : Color.clear)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .frame(height: 54)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isSelected ? Color.accentColor : Color.clear)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .onTapGesture(count: 2) {
+            onOpen()
+        }
+        .onTapGesture(count: 1) {
+            onSelect()
+        }
+        .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
         .accessibilityHint(accessibilityHint)
     }
