@@ -452,14 +452,11 @@ private struct RecentFileCard: View {
                 )
         }
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    onSelect()
-                }
-        )
-        .onTapGesture(count: 2) {
-            onOpen()
+        .overlay {
+            ClickTargetRepresentable(
+                onSingleClick: onSelect,
+                onDoubleClick: onOpen
+            )
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(file.name)
@@ -516,14 +513,11 @@ private struct SearchResultRow<Icon: View>: View {
                 .fill(isSelected ? Color.accentColor : Color.clear)
         }
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    onSelect()
-                }
-        )
-        .onTapGesture(count: 2) {
-            onOpen()
+        .overlay {
+            ClickTargetRepresentable(
+                onSingleClick: onSelect,
+                onDoubleClick: onOpen
+            )
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
@@ -623,6 +617,36 @@ private extension View {
             )
         } else {
             background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
+    }
+}
+
+private struct ClickTargetRepresentable: NSViewRepresentable {
+    let onSingleClick: () -> Void
+    let onDoubleClick: () -> Void
+
+    func makeNSView(context: Context) -> ClickTargetView {
+        let view = ClickTargetView()
+        view.onSingleClick = onSingleClick
+        view.onDoubleClick = onDoubleClick
+        return view
+    }
+
+    func updateNSView(_ nsView: ClickTargetView, context: Context) {
+        nsView.onSingleClick = onSingleClick
+        nsView.onDoubleClick = onDoubleClick
+    }
+
+    final class ClickTargetView: NSView {
+        var onSingleClick: (() -> Void)?
+        var onDoubleClick: (() -> Void)?
+
+        override func mouseDown(with event: NSEvent) {
+            if event.clickCount == 2 {
+                onDoubleClick?()
+            } else {
+                onSingleClick?()
+            }
         }
     }
 }
