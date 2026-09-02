@@ -90,7 +90,7 @@ struct ContentView: View {
             if state.isFileSearchPage {
                 Button(action: onBackFromFileSearch) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .medium))
+                        .font(.body.weight(.medium))
                         .foregroundStyle(.secondary)
                         .frame(width: 24, height: 24)
                 }
@@ -99,7 +99,7 @@ struct ContentView: View {
                 .help("Back to applications")
             } else {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 17, weight: .medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
             }
@@ -119,7 +119,7 @@ struct ContentView: View {
                         state.query = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
+                            .font(.subheadline)
                             .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
@@ -127,7 +127,7 @@ struct ContentView: View {
                 }
 
                 Image(systemName: "folder")
-                    .font(.system(size: 17, weight: .medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
                     .accessibilityHidden(true)
@@ -136,7 +136,7 @@ struct ContentView: View {
                     state.query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                        .font(.subheadline)
                         .foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
@@ -190,7 +190,7 @@ struct ContentView: View {
                 title: "File Search",
                 subtitle: "Search files and folders",
                 icon: Image(systemName: "doc.text.magnifyingglass")
-                    .font(.system(size: 17, weight: .medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(.secondary),
                 isSelected: state.selectedIndex == index,
                 accessibilityHint: "Search files and folders"
@@ -225,7 +225,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Files")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.8)
@@ -238,7 +238,7 @@ struct ContentView: View {
                         .scaleEffect(0.75)
                 } else {
                     Text(state.fileResultCountLabel)
-                        .font(.system(size: 11, weight: .regular))
+                        .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -288,7 +288,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Recent files")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.8)
@@ -343,7 +343,7 @@ struct ContentView: View {
             ProgressView()
                 .controlSize(.small)
             Text("Looking for installed apps…")
-                .font(.system(size: 13))
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -354,7 +354,7 @@ struct ContentView: View {
             ProgressView()
                 .controlSize(.small)
             Text("Searching files…")
-                .font(.system(size: 13))
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -363,11 +363,11 @@ struct ContentView: View {
     private var emptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "square.grid.2x2")
-                .font(.system(size: 25, weight: .medium))
+                .font(.title2.weight(.medium))
                 .foregroundStyle(.secondary)
 
             Text("No applications found")
-                .font(.system(size: 14, weight: .medium))
+                .font(.headline)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -375,11 +375,11 @@ struct ContentView: View {
     private var fileEmptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 25, weight: .medium))
+                .font(.title2.weight(.medium))
                 .foregroundStyle(.secondary)
 
             Text("No files found")
-                .font(.system(size: 14, weight: .medium))
+                .font(.headline)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -387,14 +387,14 @@ struct ContentView: View {
     private var recentFilesEmptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "clock")
-                .font(.system(size: 25, weight: .medium))
+                .font(.title2.weight(.medium))
                 .foregroundStyle(.secondary)
 
             Text("No recent files")
-                .font(.system(size: 14, weight: .medium))
+                .font(.headline)
 
             Text("Files you open will appear here")
-                .font(.system(size: 12))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -415,11 +415,11 @@ private struct RecentFileCard: View {
                         .frame(width: 38, height: 38)
 
                     Text(file.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.callout.weight(.medium))
                         .lineLimit(1)
 
                     Text(file.parentPath)
-                        .font(.system(size: 9, weight: .regular, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -428,11 +428,11 @@ private struct RecentFileCard: View {
                 if isSelected {
                     HStack(spacing: 7) {
                         Image(systemName: "return")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.caption.weight(.medium))
                             .foregroundStyle(.primary)
 
                         Image(systemName: "arrow.up.right")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.primary)
                     }
                 }
@@ -474,12 +474,12 @@ private struct SearchResultRow<Icon: View>: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
                     Text(subtitle)
-                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(isSelected ? .primary : .secondary)
                         .opacity(isSelected ? 0.85 : 1.0)
                         .lineLimit(1)
@@ -490,11 +490,11 @@ private struct SearchResultRow<Icon: View>: View {
                 if isSelected {
                     HStack(spacing: 7) {
                         Image(systemName: "return")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.caption.weight(.medium))
                             .foregroundStyle(.primary)
 
                         Image(systemName: "arrow.up.right")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.primary)
                             .transition(.opacity)
                     }
@@ -558,7 +558,7 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
         searchField.isBordered = false
         searchField.drawsBackground = false
         searchField.focusRingType = .none
-        searchField.font = .systemFont(ofSize: 16, weight: .regular)
+        searchField.font = .preferredFont(forTextStyle: .body)
         searchField.controlSize = .regular
         searchField.cell?.lineBreakMode = .byTruncatingTail
         if let searchCell = searchField.cell as? NSSearchFieldCell {
