@@ -11,8 +11,10 @@ import SwiftUI
 enum LauncherMetrics {
     static let panelWidth: CGFloat = 680
     static let collapsedHeight: CGFloat = 64
+    static let dividerHeight: CGFloat = 1
     static let rowHeight: CGFloat = 54
     static let rowSpacing: CGFloat = 5
+    static let horizontalInset: CGFloat = 12
     static let verticalInset: CGFloat = 12
     static let visibleEntryCount: Int = 7
 
@@ -20,7 +22,7 @@ enum LauncherMetrics {
     static var expandedHeight: CGFloat {
         let entriesHeight = (CGFloat(visibleEntryCount) * rowHeight) + (CGFloat(visibleEntryCount - 1) * rowSpacing)
         let listContentHeight = (verticalInset * 2) + entriesHeight
-        return collapsedHeight + listContentHeight
+        return collapsedHeight + dividerHeight + listContentHeight
     }
 }
 
@@ -59,7 +61,9 @@ struct ContentView: View {
                 .frame(height: LauncherMetrics.collapsedHeight)
 
             if showsExpandedContent {
-                Divider()
+                Rectangle()
+                    .fill(Color(nsColor: .separatorColor))
+                    .frame(height: LauncherMetrics.dividerHeight)
 
                 Group {
                     if state.isFileSearchPage {
@@ -68,7 +72,7 @@ struct ContentView: View {
                         results
                     }
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, LauncherMetrics.horizontalInset)
             }
         }
         .frame(
@@ -181,7 +185,6 @@ struct ContentView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 2)
             }
             .contentMargins(.vertical, LauncherMetrics.verticalInset, for: .scrollContent)
             .scrollIndicators(.never)
@@ -261,7 +264,6 @@ struct ContentView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .padding(.horizontal, 10)
             .padding(.top, 12)
 
             if state.isFileSearchLoading && state.fileResults.isEmpty {
@@ -290,7 +292,6 @@ struct ContentView: View {
                                 .id(file.id)
                             }
                         }
-                        .padding(.horizontal, 2)
                     }
                     .contentMargins(.bottom, 12, for: .scrollContent)
                     .scrollIndicators(.never)
@@ -315,7 +316,6 @@ struct ContentView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, 10)
             .padding(.top, 12)
 
             if state.recentFiles.isEmpty {
@@ -345,7 +345,6 @@ struct ContentView: View {
                                 .id(file.id)
                             }
                         }
-                        .padding(.horizontal, 2)
                     }
                     .contentMargins(.bottom, 12, for: .scrollContent)
                     .scrollIndicators(.never)
