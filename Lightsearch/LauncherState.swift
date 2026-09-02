@@ -385,8 +385,6 @@ enum InstalledApplicationScanner {
 
 @MainActor
 final class LauncherState: ObservableObject {
-    private let minimumVisibleResults = LauncherMetrics.visibleEntryCount
-
     @Published var query = "" {
         didSet {
             selectedIndex = 0
@@ -426,14 +424,8 @@ final class LauncherState: ObservableObject {
         )
     }
 
-    var displayedApplications: [InstalledApplication] {
-        let matches = filteredApplications
-        let primaryResults = matches.isEmpty ? previousResults : matches
-        return fillResults(primaryResults)
-    }
-
     var visibleResults: [LauncherResult] {
-        Array(displayedResults.prefix(minimumVisibleResults))
+        displayedResults
     }
 
     var isFileSearchPage: Bool {
@@ -441,10 +433,9 @@ final class LauncherState: ObservableObject {
     }
 
     var visibleFileResults: [SearchFile] {
-        let files = query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? recentFiles
             : fileResults
-        return Array(files.prefix(minimumVisibleResults))
     }
 
     var recentFiles: [SearchFile] {
@@ -533,24 +524,6 @@ final class LauncherState: ObservableObject {
         }
     }
 
-    private func fillResults(_ primaryResults: [InstalledApplication]) -> [InstalledApplication] {
-        guard !applications.isEmpty else { return primaryResults }
-
-        let currentIDs = Set(applications.map(\.id))
-        var results = primaryResults.filter { currentIDs.contains($0.id) }
-        var seenIDs = Set(results.map(\.id))
-        let fallbackResults = previousResults + applications
-
-        for application in fallbackResults where seenIDs.insert(application.id).inserted {
-            results.append(application)
-            if results.count >= minimumVisibleResults {
-                break
-            }
-        }
-
-        return results
-    }
-
     private func scheduleFileSearch() {
         stopFileSearch()
         fileResults = []
@@ -587,17 +560,7 @@ final class LauncherState: ObservableObject {
     }
 
     private var displayedResults: [LauncherResult] {
-        var results = filteredLauncherResults
-        var seenIDs = Set(results.map(\.id))
-
-        for application in displayedApplications where seenIDs.insert(application.id).inserted {
-            results.append(.application(application))
-            if results.count >= minimumVisibleResults {
-                break
-            }
-        }
-
-        return results
+        filteredLauncherResults
     }
 
     private var filteredLauncherResults: [LauncherResult] {
