@@ -80,10 +80,10 @@ struct ContentView: View {
             height: showsExpandedContent ? LauncherMetrics.expandedHeight : LauncherMetrics.collapsedHeight
         )
         .foregroundStyle(.primary)
-        .lightsearchGlass(cornerRadius: 28)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .lightsearchGlass(cornerRadius: currentCornerRadius)
+        .clipShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+            RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous)
                 .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.8)
         }
         .accessibilityElement(children: .contain)
@@ -96,6 +96,10 @@ struct ContentView: View {
             let hasQuery = !newQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             onQueryChanged(hasQuery || state.isFileSearchPage)
         }
+    }
+
+    private var currentCornerRadius: CGFloat {
+        showsExpandedContent ? 28 : (LauncherMetrics.collapsedHeight / 2)
     }
 
     private var hasQuery: Bool {
@@ -164,7 +168,7 @@ struct ContentView: View {
                 .help("Clear search")
             }
         }
-        .padding(.horizontal, 15)
+        .padding(.horizontal, 18)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
