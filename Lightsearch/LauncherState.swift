@@ -410,6 +410,7 @@ final class LauncherState: ObservableObject {
     private var fileSearchTask: Task<Void, Never>?
     private var previousResults: [InstalledApplication] = []
     private let maximumFileResults = 50
+    private let maximumApplicationResults = 20
 
     init(previewApplications: [InstalledApplication] = []) {
         applications = previewApplications
@@ -418,10 +419,12 @@ final class LauncherState: ObservableObject {
     }
 
     var filteredApplications: [InstalledApplication] {
-        ApplicationSearch.rankedResults(
-            applications,
-            query: query,
-            history: launchHistory
+        Array(
+            ApplicationSearch.rankedResults(
+                applications,
+                query: query,
+                history: launchHistory
+            ).prefix(maximumApplicationResults)
         )
     }
 
@@ -594,11 +597,13 @@ final class LauncherState: ObservableObject {
             )
         }
 
-        return ApplicationSearch.rankedResults(
+        let ranked = ApplicationSearch.rankedResults(
             candidates,
             query: query,
             history: launchHistory
-        ).map { candidate in
+        )
+
+        return Array(ranked.prefix(maximumApplicationResults)).map { candidate in
             candidate.id == fileSearchActionID
                 ? .fileSearch
                 : .application(candidate)
