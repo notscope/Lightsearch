@@ -44,7 +44,6 @@ struct ContentView: View {
 
             if showsExpandedContent {
                 Divider()
-                    .overlay(Color.white.opacity(0.12))
 
                 Group {
                     if state.isFileSearchPage {
@@ -59,12 +58,11 @@ struct ContentView: View {
         }
         .frame(width: 680, height: showsExpandedContent ? 560 : 64)
         .foregroundStyle(.primary)
-        .background(Color.black.opacity(0.12))
         .lightsearchGlass(cornerRadius: 28)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.8)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
@@ -430,11 +428,11 @@ private struct RecentFileCard: View {
                     HStack(spacing: 7) {
                         Image(systemName: "return")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
 
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
                     }
                 }
             }
@@ -442,12 +440,12 @@ private struct RecentFileCard: View {
             .frame(maxWidth: .infinity, minHeight: 104, maxHeight: 104, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? Color.white.opacity(0.16) : Color.clear)
+                    .fill(isSelected ? Color.accentColor : Color.clear)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(
-                        Color.white.opacity(isSelected ? 0.16 : 0.08),
+                        isSelected ? Color.clear : Color(nsColor: .separatorColor).opacity(0.4),
                         lineWidth: 0.7
                     )
             }
@@ -476,11 +474,13 @@ private struct SearchResultRow<Icon: View>: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
 
                     Text(subtitle)
                         .font(.system(size: 10, weight: .regular, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .opacity(isSelected ? 0.85 : 1.0)
                         .lineLimit(1)
                 }
 
@@ -490,11 +490,11 @@ private struct SearchResultRow<Icon: View>: View {
                     HStack(spacing: 7) {
                         Image(systemName: "return")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
 
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
                             .transition(.opacity)
                     }
                 }
@@ -503,13 +503,7 @@ private struct SearchResultRow<Icon: View>: View {
             .frame(height: 54)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? Color.white.opacity(0.16) : Color.clear)
-            }
-            .overlay {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.7)
-                }
+                    .fill(isSelected ? Color.accentColor : Color.clear)
             }
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
@@ -606,7 +600,7 @@ private extension View {
     func lightsearchGlass(cornerRadius: CGFloat) -> some View {
         if #available(macOS 26.0, *) {
             glassEffect(
-                .regular.tint(Color.white.opacity(0.07)),
+                .regular,
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
         } else {
