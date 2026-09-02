@@ -225,7 +225,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Files")
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.8)
@@ -238,7 +238,7 @@ struct ContentView: View {
                         .scaleEffect(0.75)
                 } else {
                     Text(state.fileResultCountLabel)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -288,7 +288,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Recent files")
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.8)
@@ -415,11 +415,11 @@ private struct RecentFileCard: View {
                         .frame(width: 38, height: 38)
 
                     Text(file.name)
-                        .font(.callout.weight(.medium))
+                        .font(.body.weight(.medium))
                         .lineLimit(1)
 
                     Text(file.parentPath)
-                        .font(.system(.caption2, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -428,11 +428,11 @@ private struct RecentFileCard: View {
                 if isSelected {
                     HStack(spacing: 7) {
                         Image(systemName: "return")
-                            .font(.caption.weight(.medium))
+                            .font(.subheadline.weight(.medium))
                             .foregroundStyle(.primary)
 
                         Image(systemName: "arrow.up.right")
-                            .font(.caption.weight(.semibold))
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                     }
                 }
@@ -474,12 +474,12 @@ private struct SearchResultRow<Icon: View>: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.body.weight(.medium))
+                        .font(.title3.weight(.medium))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
                     Text(subtitle)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(.system(.subheadline, design: .monospaced))
                         .foregroundStyle(isSelected ? .primary : .secondary)
                         .opacity(isSelected ? 0.85 : 1.0)
                         .lineLimit(1)
@@ -490,11 +490,11 @@ private struct SearchResultRow<Icon: View>: View {
                 if isSelected {
                     HStack(spacing: 7) {
                         Image(systemName: "return")
-                            .font(.caption.weight(.medium))
+                            .font(.subheadline.weight(.medium))
                             .foregroundStyle(.primary)
 
                         Image(systemName: "arrow.up.right")
-                            .font(.caption.weight(.semibold))
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                             .transition(.opacity)
                     }
