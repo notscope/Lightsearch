@@ -86,11 +86,11 @@ struct ContentView: View {
     }
 
     private var searchBar: some View {
-        HStack(spacing: 11) {
+        HStack(spacing: 12) {
             if state.isFileSearchPage {
                 Button(action: onBackFromFileSearch) {
                     Image(systemName: "chevron.left")
-                        .font(.body.weight(.medium))
+                        .font(.title3.weight(.medium))
                         .foregroundStyle(.secondary)
                         .frame(width: 24, height: 24)
                 }
@@ -99,7 +99,7 @@ struct ContentView: View {
                 .help("Back to applications")
             } else {
                 Image(systemName: "magnifyingglass")
-                    .font(.body.weight(.medium))
+                    .font(.title3.weight(.medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
             }
@@ -111,7 +111,7 @@ struct ContentView: View {
                     : "Search for apps and commands...",
                 onViewCreated: onSearchFieldReady
             )
-            .frame(height: 26)
+            .frame(height: 32)
 
             if state.isFileSearchPage {
                 if !state.query.isEmpty {
@@ -119,7 +119,7 @@ struct ContentView: View {
                         state.query = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.subheadline)
+                            .font(.body)
                             .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
@@ -127,7 +127,7 @@ struct ContentView: View {
                 }
 
                 Image(systemName: "folder")
-                    .font(.body.weight(.medium))
+                    .font(.title3.weight(.medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
                     .accessibilityHidden(true)
@@ -136,7 +136,7 @@ struct ContentView: View {
                     state.query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.subheadline)
+                        .font(.body)
                         .foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
@@ -558,8 +558,8 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
         searchField.isBordered = false
         searchField.drawsBackground = false
         searchField.focusRingType = .none
-        searchField.font = .preferredFont(forTextStyle: .body)
-        searchField.controlSize = .regular
+        searchField.font = .preferredFont(forTextStyle: .title3)
+        searchField.controlSize = .large
         searchField.cell?.lineBreakMode = .byTruncatingTail
         if let searchCell = searchField.cell as? NSSearchFieldCell {
             // The magnifying glass and clear affordance are owned by the
