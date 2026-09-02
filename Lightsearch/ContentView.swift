@@ -53,8 +53,6 @@ struct ContentView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
             }
         }
         .frame(width: 680, height: showsExpandedContent ? 560 : 64)
@@ -148,30 +146,30 @@ struct ContentView: View {
     }
 
     private var results: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ScrollViewReader { proxy in
-                ScrollView(.vertical) {
-                    LazyVStack(spacing: 5) {
-                        if state.visibleResults.isEmpty {
-                            if state.isLoading && state.applications.isEmpty {
-                                loadingState
-                            } else {
-                                emptyState
-                            }
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                LazyVStack(spacing: 5) {
+                    if state.visibleResults.isEmpty {
+                        if state.isLoading && state.applications.isEmpty {
+                            loadingState
                         } else {
-                            ForEach(Array(state.visibleResults.enumerated()), id: \.element.id) { index, result in
-                                resultRow(result, at: index)
-                                    .id(result.id)
-                            }
+                            emptyState
+                        }
+                    } else {
+                        ForEach(Array(state.visibleResults.enumerated()), id: \.element.id) { index, result in
+                            resultRow(result, at: index)
+                                .id(result.id)
                         }
                     }
-                    .padding(.horizontal, 2)
                 }
-                .scrollIndicators(.never)
-                .onChange(of: state.selectedIndex) { _, newIndex in
-                    guard state.visibleResults.indices.contains(newIndex) else { return }
-                    proxy.scrollTo(state.visibleResults[newIndex].id, anchor: nil)
-                }
+                .padding(.horizontal, 2)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+            }
+            .scrollIndicators(.never)
+            .onChange(of: state.selectedIndex) { _, newIndex in
+                guard state.visibleResults.indices.contains(newIndex) else { return }
+                proxy.scrollTo(state.visibleResults[newIndex].id, anchor: nil)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -246,6 +244,7 @@ struct ContentView: View {
                 }
             }
             .padding(.horizontal, 10)
+            .padding(.top, 12)
 
             if state.isFileSearchLoading && state.fileResults.isEmpty {
                 fileLoadingState
@@ -274,6 +273,7 @@ struct ContentView: View {
                             }
                         }
                         .padding(.horizontal, 2)
+                        .padding(.bottom, 12)
                     }
                     .scrollIndicators(.never)
                     .onChange(of: state.selectedIndex) { _, newIndex in
@@ -298,6 +298,7 @@ struct ContentView: View {
                 Spacer()
             }
             .padding(.horizontal, 10)
+            .padding(.top, 12)
 
             if state.recentFiles.isEmpty {
                 recentFilesEmptyState
@@ -327,6 +328,7 @@ struct ContentView: View {
                             }
                         }
                         .padding(.horizontal, 2)
+                        .padding(.bottom, 12)
                     }
                     .scrollIndicators(.never)
                     .onChange(of: state.selectedIndex) { _, newIndex in
