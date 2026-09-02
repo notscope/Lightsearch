@@ -452,11 +452,14 @@ private struct RecentFileCard: View {
                 )
         }
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    onSelect()
+                }
+        )
         .onTapGesture(count: 2) {
             onOpen()
-        }
-        .onTapGesture(count: 1) {
-            onSelect()
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(file.name)
@@ -513,11 +516,14 @@ private struct SearchResultRow<Icon: View>: View {
                 .fill(isSelected ? Color.accentColor : Color.clear)
         }
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    onSelect()
+                }
+        )
         .onTapGesture(count: 2) {
             onOpen()
-        }
-        .onTapGesture(count: 1) {
-            onSelect()
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
