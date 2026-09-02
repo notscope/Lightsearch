@@ -16,6 +16,7 @@ enum LauncherMetrics {
     static let rowSpacing: CGFloat = 5
     static let horizontalInset: CGFloat = 12
     static let verticalInset: CGFloat = 12
+    static let cornerRadius: CGFloat = 32
     static let visibleEntryCount: Int = 7
 
     /// Dynamically computed height to fit exactly `visibleEntryCount` entries before scrolling
@@ -80,10 +81,10 @@ struct ContentView: View {
             height: showsExpandedContent ? LauncherMetrics.expandedHeight : LauncherMetrics.collapsedHeight
         )
         .foregroundStyle(.primary)
-        .lightsearchGlass(cornerRadius: currentCornerRadius)
-        .clipShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
+        .lightsearchGlass(cornerRadius: LauncherMetrics.cornerRadius)
+        .clipShape(RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous)
                 .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.8)
         }
         .accessibilityElement(children: .contain)
@@ -96,10 +97,6 @@ struct ContentView: View {
             let hasQuery = !newQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             onQueryChanged(hasQuery || state.isFileSearchPage)
         }
-    }
-
-    private var currentCornerRadius: CGFloat {
-        showsExpandedContent ? 28 : (LauncherMetrics.collapsedHeight / 2)
     }
 
     private var hasQuery: Bool {
