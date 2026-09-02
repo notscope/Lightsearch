@@ -54,6 +54,7 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 12)
+                .padding(.bottom, 12)
             }
         }
         .frame(width: 680, height: showsExpandedContent ? 560 : 64)
