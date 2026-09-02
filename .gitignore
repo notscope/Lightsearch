@@ -1,0 +1,8 @@
+# Xcode build products and derived data
+build/
+build-*/
+DerivedData/
+
+# Per-user Xcode state
+xcuserdata/
+*.xcuserstate
