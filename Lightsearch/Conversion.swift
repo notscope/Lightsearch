@@ -210,6 +210,10 @@ enum ConversionEngine {
     }
 
     private static func calculatorResult(for query: String) -> ConversionResult? {
+        guard !isPlainNumber(query) else {
+            return nil
+        }
+
         guard let value = CalculatorExpressionEvaluator.evaluate(query) else {
             return nil
         }
@@ -223,6 +227,30 @@ enum ConversionEngine {
             outputLabel: "Result",
             copyText: output
         )
+    }
+
+    private static func isPlainNumber(_ text: String) -> Bool {
+        var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        while trimmed.hasPrefix("(") && trimmed.hasSuffix(")") {
+            var depth = 0
+            var matchedAtEnd = false
+            for (index, char) in trimmed.enumerated() {
+                if char == "(" {
+                    depth += 1
+                } else if char == ")" {
+                    depth -= 1
+                    if depth == 0 {
+                        matchedAtEnd = (index == trimmed.count - 1)
+                        break
+                    }
+                }
+            }
+            guard matchedAtEnd else { break }
+            trimmed = String(trimmed.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let stripped = trimmed.replacingOccurrences(of: ",", with: "")
+        let pattern = #"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$"#
+        return stripped.range(of: pattern, options: .regularExpression) != nil
     }
 
     private static func parseNumericInput(_ text: String) -> NumericInput? {

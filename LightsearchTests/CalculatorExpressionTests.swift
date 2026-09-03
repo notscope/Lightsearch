@@ -443,6 +443,56 @@ final class CalculatorExpressionTests: XCTestCase {
         XCTAssertNil(ConversionEngine.result(for: "not a calculator expression"))
     }
 
+    func testPlainNumbersDoNotTriggerCalculatorMenu() {
+        let plainNumbers = [
+            "12123123",
+            "0",
+            "5",
+            "-5",
+            "+5",
+            "42",
+            "100",
+            "1,000",
+            "12,345.5",
+            "0.5",
+            ".5",
+            "5.",
+            "1.5e2",
+            "2E-3",
+            "(12123123)",
+            "((5))",
+            "(-5)"
+        ]
+
+        for number in plainNumbers {
+            XCTAssertNil(
+                ConversionEngine.result(for: number),
+                "Expected plain number not to show calculator menu: \(number.debugDescription)"
+            )
+        }
+
+        let validEquations = [
+            "12123123 + 1",
+            "5 * 5",
+            "10 - 2",
+            "8 / 2",
+            "10 % 3",
+            "2 ^ 8",
+            "5!",
+            "50%",
+            "sqrt(81)",
+            "pi",
+            "(2 + 3) * 4"
+        ]
+
+        for equation in validEquations {
+            XCTAssertNotNil(
+                ConversionEngine.result(for: equation),
+                "Expected actual equation to trigger calculator menu: \(equation.debugDescription)"
+            )
+        }
+    }
+
     func testWordBasedOperatorsAreRejected() {
         let rejectedWordOperators = [
             "2 plus 3",
