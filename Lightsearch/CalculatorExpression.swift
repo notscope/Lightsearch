@@ -88,6 +88,8 @@ enum CalculatorExpressionEvaluator {
         let decimalSeparator: Character
         let groupingSeparator: Character
         var index = 0
+        private var parenStack: [Bool] = []
+        private var lastTokenWasIdentifier = false
 
         init(source: String, locale: Locale = .current) {
             self.characters = Array(source)
@@ -111,21 +113,27 @@ enum CalculatorExpressionEvaluator {
                 let character = characters[index]
                 switch character {
                 case "+":
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.plus)
                 case "-", "−":
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.minus)
                 case "*", "×", "·", "⋅":
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.multiply)
                 case "/", "÷":
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.divide)
                 case "^":
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.power)
                 case "%":
+                    lastTokenWasIdentifier = false
                     // An attached percent directly following an operand is
                     // postfix percentage syntax (50%, 50%+3, 50%*2, 50%(2+3)).
                     // A spaced percent is the binary remainder operator (10 % 3).
@@ -133,15 +141,21 @@ enum CalculatorExpressionEvaluator {
                     index += 1
                     tokens.append(isPostfix ? .percentPostfix : .percent)
                 case "!":
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.factorial)
                 case "(":
+                    parenStack.append(lastTokenWasIdentifier)
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.leftParenthesis)
                 case ")":
+                    _ = parenStack.popLast()
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.rightParenthesis)
                 case ",":
+                    lastTokenWasIdentifier = false
                     if decimalSeparator == ",", index + 1 < characters.count, isASCIIDigit(characters[index + 1]),
                        let number = readNumber() {
                         tokens.append(.number(number))
@@ -150,29 +164,38 @@ enum CalculatorExpressionEvaluator {
                         tokens.append(.comma)
                     }
                 case ";":
+                    lastTokenWasIdentifier = false
                     index += 1
                     tokens.append(.comma)
                 case "π":
                     index += 1
                     tokens.append(.identifier("pi"))
+                    lastTokenWasIdentifier = true
                 case "τ":
                     index += 1
                     tokens.append(.identifier("tau"))
+                    lastTokenWasIdentifier = true
                 case ".":
+                    lastTokenWasIdentifier = false
                     guard let number = readNumber() else { return nil }
                     tokens.append(.number(number))
                 default:
                     if let fraction = Self.unicodeFractions[character] {
+                        lastTokenWasIdentifier = false
                         index += 1
                         tokens.append(.number(fraction))
                     } else if let superscriptValue = readSuperscriptNumber() {
+                        lastTokenWasIdentifier = false
                         tokens.append(.power)
                         tokens.append(.number(superscriptValue))
                     } else if isASCIIDigit(character) {
+                        lastTokenWasIdentifier = false
                         guard let number = readNumber() else { return nil }
                         tokens.append(.number(number))
                     } else if isIdentifierStart(character) {
-                        tokens.append(.identifier(readIdentifier()))
+                        let id = readIdentifier()
+                        tokens.append(.identifier(id))
+                        lastTokenWasIdentifier = true
                     } else {
                         return nil
                     }
@@ -258,9 +281,10 @@ enum CalculatorExpressionEvaluator {
                         let otherSep: Character = (sep == "." ? "," : ".")
                         let hasOppositeDecimal = (endIdx < characters.count && characters[endIdx] == otherSep &&
                             endIdx + 1 < characters.count && isASCIIDigit(characters[endIdx + 1]))
+                        let isDirectFunctionArg = (parenStack.last == true)
                         if hasOppositeDecimal {
                             isGrouping = true
-                        } else if sep != decimalSeparator {
+                        } else if !isDirectFunctionArg && sep != decimalSeparator {
                             isGrouping = true
                         }
                     }
@@ -285,7 +309,7 @@ enum CalculatorExpressionEvaluator {
                 } else {
                     if char == "." {
                         isDecimal = true
-                    } else if char == "," && (index + 1 < characters.count && isASCIIDigit(characters[index + 1])) {
+                    } else if char == "," {
                         if decimalSeparator == "," {
                             isDecimal = true
                         }
@@ -311,6 +335,8 @@ enum CalculatorExpressionEvaluator {
 
             let hasDigits = integerDigitCount > 0 || hasFraction || mixedFraction > 0
             guard hasDigits else { return nil }
+
+            let significandEnd = index
 
             // Only consume an exponent when it is complete. A directly
             // adjacent incomplete "e" is rejected rather than interpreted as
@@ -351,6 +377,10 @@ enum CalculatorExpressionEvaluator {
             }
 
             guard let value = Double(rawNumber), value.isFinite else { return nil }
+            let significand = String(characters[start..<significandEnd])
+            if value == 0, significand.contains(where: { $0 >= "1" && $0 <= "9" }) {
+                return nil // Nonzero literal underflowed to zero
+            }
             return value + mixedFraction
         }
 
@@ -389,7 +419,7 @@ enum CalculatorExpressionEvaluator {
         }
 
         private func isIdentifierCharacter(_ character: Character) -> Bool {
-            character.isLetter || character.isNumber || character == "_"
+            character.isLetter || isASCIIDigit(character) || character == "_"
         }
 
         private func isASCIIDigit(_ character: Character) -> Bool {
@@ -517,8 +547,13 @@ enum CalculatorExpressionEvaluator {
 
             // pow() returns NaN for a negative base with a non-integral
             // exponent, and infinity for overflow. Both are invalid results.
-            if base < 0, exponent.rounded(.towardZero) != exponent {
-                return nil
+            if base < 0 {
+                guard let expInt = exactInteger(exponent) else {
+                    return nil
+                }
+                if base == -1 {
+                    return (expInt % 2 != 0) ? -1.0 : 1.0
+                }
             }
             if base == 0, exponent < 0 {
                 return nil
@@ -692,9 +727,9 @@ enum CalculatorExpressionEvaluator {
             case "tanh":
                 return unary(arguments) { Darwin.tanh($0) }
             case "rad", "radians":
-                return unary(arguments) { $0 * .pi / 180 }
+                return unary(arguments) { ($0 / 180.0) * .pi }
             case "deg", "degrees":
-                return unary(arguments) { $0 * 180 / .pi }
+                return unary(arguments) { ($0 / .pi) * 180.0 }
             case "percent":
                 return unary(arguments) { $0 / 100 }
             case "factorial", "fact":
@@ -705,7 +740,16 @@ enum CalculatorExpressionEvaluator {
                 return checkedPower(arguments[0], arguments[1])
             case "root":
                 guard arguments.count == 2, arguments[1] != 0 else { return nil }
-                return checkedPower(arguments[0], 1 / arguments[1])
+                let radicand = arguments[0]
+                let degree = arguments[1]
+                if radicand < 0 {
+                    guard let degInt = exactInteger(degree), degInt % 2 != 0 else {
+                        return nil
+                    }
+                    let positiveRoot = Darwin.pow(-radicand, 1.0 / degree)
+                    return checked(-positiveRoot)
+                }
+                return checkedPower(radicand, 1.0 / degree)
             case "mod", "modulo":
                 guard arguments.count == 2, arguments[1] != 0 else { return nil }
                 return checked(arguments[0].truncatingRemainder(dividingBy: arguments[1]))
@@ -717,10 +761,10 @@ enum CalculatorExpressionEvaluator {
                 return checked(arguments.max() ?? .nan)
             case "sum":
                 guard !arguments.isEmpty else { return nil }
-                return checked(arguments.reduce(0, +))
+                return checked(neumaierSum(arguments))
             case "avg", "average", "mean":
                 guard !arguments.isEmpty else { return nil }
-                return checked(arguments.reduce(0, +) / Double(arguments.count))
+                return checked(neumaierSum(arguments) / Double(arguments.count))
             case "hypot":
                 guard arguments.count == 2 else { return nil }
                 return checked(Darwin.hypot(arguments[0], arguments[1]))
@@ -757,21 +801,36 @@ enum CalculatorExpressionEvaluator {
             guard arguments.count == 1 else { return nil }
             let result = function(arguments[0])
             guard result.isFinite else { return nil }
-            return checked(degrees ? result * 180 / .pi : result)
+            return checked(degrees ? (result / .pi) * 180.0 : result)
         }
 
         private func sine(_ value: Double, degrees: Bool) -> Double {
-            Darwin.sin(degrees ? value * .pi / 180 : value)
+            if degrees {
+                let reduced = value.truncatingRemainder(dividingBy: 360)
+                return Darwin.sin((reduced / 180.0) * .pi)
+            }
+            return Darwin.sin(value)
         }
 
         private func cosine(_ value: Double, degrees: Bool) -> Double {
-            Darwin.cos(degrees ? value * .pi / 180 : value)
+            if degrees {
+                let reduced = value.truncatingRemainder(dividingBy: 360)
+                return Darwin.cos((reduced / 180.0) * .pi)
+            }
+            return Darwin.cos(value)
         }
 
         private func tangent(_ value: Double, degrees: Bool) -> Double {
-            let radians = degrees ? value * .pi / 180 : value
-            guard abs(Darwin.cos(radians)) > 1e-12 else { return .nan }
-            return Darwin.tan(radians)
+            if degrees {
+                let reduced = value.truncatingRemainder(dividingBy: 360)
+                let angleIn180 = abs(reduced).truncatingRemainder(dividingBy: 180)
+                guard abs(angleIn180 - 90) > 1e-10 else { return .nan }
+                let radians = (reduced / 180.0) * .pi
+                guard abs(Darwin.cos(radians)) > 1e-12 else { return .nan }
+                return Darwin.tan(radians)
+            }
+            guard abs(Darwin.cos(value)) > 1e-12 else { return .nan }
+            return Darwin.tan(value)
         }
 
         private func factorial(_ value: Double) -> Double? {
@@ -792,13 +851,33 @@ enum CalculatorExpressionEvaluator {
         }
 
         private func checkedPower(_ base: Double, _ exponent: Double) -> Double? {
-            if base < 0, exponent.rounded(.towardZero) != exponent {
-                return nil
+            if base < 0 {
+                guard let expInt = exactInteger(exponent) else {
+                    return nil
+                }
+                if base == -1 {
+                    return (expInt % 2 != 0) ? -1.0 : 1.0
+                }
             }
             if base == 0, exponent < 0 {
                 return nil
             }
             return checked(Darwin.pow(base, exponent))
+        }
+
+        private func neumaierSum(_ values: [Double]) -> Double {
+            var sum = 0.0
+            var c = 0.0
+            for v in values {
+                let t = sum + v
+                if abs(sum) >= abs(v) {
+                    c += (sum - t) + v
+                } else {
+                    c += (v - t) + sum
+                }
+                sum = t
+            }
+            return sum + c
         }
 
         private static let maxExactInteger = 9_007_199_254_740_991.0 // 2^53 - 1
@@ -829,12 +908,21 @@ enum CalculatorExpressionEvaluator {
             let n = Int(n64)
             let r = Int(r64)
             let k = min(r, n - r)
-            var result = 1.0
+            var result: Int64 = 1
             for i in 1...k {
-                result = (result * Double(n - i + 1)) / Double(i)
-                guard result.isFinite else { return nil }
+                let g = gcd2(result, Int64(i))
+                let rDivided = result / g
+                let iDivided = Int64(i) / g
+                let term = Int64(n - i + 1)
+                guard term % iDivided == 0 else { return nil }
+                let termDivided = term / iDivided
+                let (nextResult, overflow) = rDivided.multipliedReportingOverflow(by: termDivided)
+                guard !overflow, Double(nextResult) <= Self.maxExactInteger else {
+                    return nil
+                }
+                result = nextResult
             }
-            return checked(result.rounded())
+            return Double(result)
         }
 
         private func permutations(_ nVal: Double, _ rVal: Double) -> Double? {

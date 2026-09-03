@@ -122,6 +122,9 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("cbrt(-8)", equals: -2)
         assertValue("root(27, 3)", equals: 3)
         assertValue("root(16, 4)", equals: 2)
+        assertValue("root(-8, 3)", equals: -2)
+        assertValue("root(-32, 5)", equals: -2)
+        assertValue("root(-8, -3)", equals: -0.5)
         assertValue("abs(-12.5)", equals: 12.5)
         assertValue("floor(3.9)", equals: 3)
         assertValue("ceil(3.1)", equals: 4)
@@ -334,7 +337,9 @@ final class CalculatorExpressionTests: XCTestCase {
             "root(16, 0)",
             "root(0, -2)",
             "root(-16, 2)",
-            "root(-8, 3)",
+            "root(-8, 2)",
+            "root(-8, 2.5)",
+            "root(-8, 4)",
             "mod()",
             "mod(1)",
             "mod(1, 2, 3)",
@@ -986,41 +991,129 @@ final class CalculatorExpressionTests: XCTestCase {
         )
     }
 
-    func testAlgebraicInvariantsAndProperties() {
+    func testAlgebraicInvariantsAndProperties() throws {
+        let usLocale = Locale(identifier: "en_US")
         let pairs: [(Double, Double)] = [(2, 3), (7, 13), (100, 25), (0.5, 0.25)]
         for (a, b) in pairs {
-            let sumAB = CalculatorExpressionEvaluator.evaluate("\(a) + \(b)")!
-            let sumBA = CalculatorExpressionEvaluator.evaluate("\(b) + \(a)")!
+            let sumAB = try XCTUnwrap(CalculatorExpressionEvaluator.evaluate("\(a) + \(b)", locale: usLocale))
+            let sumBA = try XCTUnwrap(CalculatorExpressionEvaluator.evaluate("\(b) + \(a)", locale: usLocale))
             XCTAssertEqual(sumAB, sumBA)
 
-            let mulAB = CalculatorExpressionEvaluator.evaluate("\(a) * \(b)")!
-            let mulBA = CalculatorExpressionEvaluator.evaluate("\(b) * \(a)")!
+            let mulAB = try XCTUnwrap(CalculatorExpressionEvaluator.evaluate("\(a) * \(b)", locale: usLocale))
+            let mulBA = try XCTUnwrap(CalculatorExpressionEvaluator.evaluate("\(b) * \(a)", locale: usLocale))
             XCTAssertEqual(mulAB, mulBA)
 
-            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a) + 0"), a)
-            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a) * 1"), a)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a) + 0", locale: usLocale), a)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a) * 1", locale: usLocale), a)
 
-            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("--\(a)"), a)
-            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("(\(a))"), a)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("--\(a)", locale: usLocale), a)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("(\(a))", locale: usLocale), a)
 
-            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)%"), a / 100)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)%", locale: usLocale), a / 100)
 
-            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)^0"), 1)
-            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)^1"), a)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)^0", locale: usLocale), 1)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)^1", locale: usLocale), a)
         }
 
         let intPairs: [(Int64, Int64)] = [(12, 18), (7, 13), (48, 180), (14, 35)]
         for (a, b) in intPairs {
-            let gcdAB = CalculatorExpressionEvaluator.evaluate("gcd(\(a), \(b))")!
-            let gcdBA = CalculatorExpressionEvaluator.evaluate("gcd(\(b), \(a))")!
+            let gcdAB = try XCTUnwrap(CalculatorExpressionEvaluator.evaluate("gcd(\(a), \(b))", locale: usLocale))
+            let gcdBA = try XCTUnwrap(CalculatorExpressionEvaluator.evaluate("gcd(\(b), \(a))", locale: usLocale))
             XCTAssertEqual(gcdAB, gcdBA)
 
-            let lcmAB = CalculatorExpressionEvaluator.evaluate("lcm(\(a), \(b))")!
-            let lcmBA = CalculatorExpressionEvaluator.evaluate("lcm(\(b), \(a))")!
+            let lcmAB = try XCTUnwrap(CalculatorExpressionEvaluator.evaluate("lcm(\(a), \(b))", locale: usLocale))
+            let lcmBA = try XCTUnwrap(CalculatorExpressionEvaluator.evaluate("lcm(\(b), \(a))", locale: usLocale))
             XCTAssertEqual(lcmAB, lcmBA)
 
             XCTAssertEqual(gcdAB * lcmAB, Double(a * b))
-            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("gcd(\(a), 0)"), Double(a))
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("gcd(\(a), 0)", locale: usLocale), Double(a))
         }
+    }
+
+    func testFunctionCommaGroupingAmbiguity() {
+        assertValue("pow(2,100)", equals: pow(2, 100))
+        assertValue("mod(2,100)", equals: 2)
+        assertValue("gcd(2,100)", equals: 2)
+        assertValue("sum(2,100)", equals: 102)
+        assertValue("avg(2,100)", equals: 51)
+        assertValue("min(1,234)", equals: 1)
+        assertValue("log(8,100)", equals: log(8) / log(100))
+        assertValue("hypot(3,400)", equals: Darwin.hypot(3, 400))
+    }
+
+    func testCombinationExactnessRegression() {
+        assertValue("nCr(56,24)", equals: 4_355_031_703_297_275, accuracy: 0)
+        assertValue("nCr(60,20)", equals: 4_191_844_505_805_495, accuracy: 0)
+        assertValue("nCr(56,25)", equals: 5_574_440_580_220_512, accuracy: 0)
+    }
+
+    func testNegativePowerIntegerPrecisionBoundary() {
+        assertValue("(-1)^9007199254740991", equals: -1)
+        assertValue("(-1)^9007199254740990", equals: 1)
+        assertValue("pow(-1, 9007199254740991)", equals: -1)
+        assertValue("pow(-1, 9007199254740990)", equals: 1)
+
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("(-1)^9007199254740993"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("pow(-1, 9007199254740993)"))
+    }
+
+    func testSuperscriptConstants() {
+        assertValue("pi²", equals: Double.pi * Double.pi)
+        assertValue("π²", equals: Double.pi * Double.pi)
+        assertValue("e²", equals: exp(2))
+        assertValue("tau²", equals: pow(2 * Double.pi, 2))
+        assertValue("2pi²", equals: 2 * Double.pi * Double.pi)
+        let phi = (1 + sqrt(5)) / 2
+        assertValue("phi²", equals: phi * phi)
+    }
+
+    func testLiteralUnderflowDoesNotBecomeExactZero() {
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("1e-400"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("factorial(1e-400)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("(-2)^1e-400"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("gcd(1e-400, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("0^-1e-400"))
+
+        // Exact zeros remain valid
+        assertValue("0", equals: 0)
+        assertValue("0.0", equals: 0)
+        assertValue("0e5", equals: 0)
+    }
+
+    func testLargeDegreeTrigReduction() {
+        assertValue("sin(360000000000090)", equals: 1, accuracy: 1e-12)
+        assertValue("cos(360000000000090)", equals: 0, accuracy: 1e-12)
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("tan(360000000000090)"))
+    }
+
+    func testDegreeRadianOverflowSafety() {
+        assertValue("rad(1e308)", equals: (1e308 / 180.0) * Double.pi)
+        assertValue("degrees(1e306)", equals: (1e306 / Double.pi) * 180.0)
+    }
+
+    func testCompensatedSummationOrderIndependence() {
+        assertValue("sum(1e16, 1, -1e16)", equals: 1)
+        assertValue("sum(1e16, -1e16, 1)", equals: 1)
+        assertValue("avg(1e16, 1, -1e16)", equals: 1.0 / 3.0)
+        assertValue("avg(1e16, -1e16, 1)", equals: 1.0 / 3.0)
+    }
+
+    func testTrailingCommaDecimalInCommaLocales() {
+        let deLocale = Locale(identifier: "de_DE")
+        let idLocale = Locale(identifier: "en_ID")
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("5, + 1", locale: deLocale), 6)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("0, + 1", locale: deLocale), 1)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("5, + 1", locale: idLocale), 6)
+    }
+
+    func testDoubleFactorialAndImplicitDivisionPrecedenceDocumentation() {
+        // Lightsearch implements chained factorial: 3!! = (3!)! = 720
+        assertValue("3!!", equals: 720)
+        assertValue("(3!)!", equals: 720)
+
+        // Implicit multiplication has left-to-right precedence with division:
+        // 1/2pi = (1/2) * pi = pi/2
+        assertValue("1/2pi", equals: Double.pi / 2.0)
+        assertValue("2/3(4)", equals: (2.0 / 3.0) * 4.0)
     }
 }
