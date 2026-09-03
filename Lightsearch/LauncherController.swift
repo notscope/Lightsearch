@@ -40,6 +40,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
+        panel.appearance = NSApp.effectiveAppearance
 
         let hostingView = NSHostingView(
             rootView: ContentView(
@@ -101,6 +102,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     func show() {
         state.loadIfNeeded()
         state.resetForPresentation()
+        panel.appearance = NSApp.effectiveAppearance
         updatePanelSize(isExpanded: false)
         positionPanel()
 

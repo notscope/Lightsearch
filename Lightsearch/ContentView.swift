@@ -93,6 +93,11 @@ struct ContentView: View {
                 ? "Lightsearch file search"
                 : "Lightsearch application launcher"
         )
+        .preferredColorScheme(
+            (NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) ?? .aqua) == .darkAqua
+                ? .dark
+                : .light
+        )
         .onChange(of: state.query) { _, newQuery in
             let hasQuery = !newQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             onQueryChanged(hasQuery || state.isFileSearchPage)
@@ -612,13 +617,14 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
     }
 
     private func applyAppearance(to searchField: NSSearchField) {
-        searchField.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
-        searchField.textColor = .labelColor
+        let isDark = (NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) ?? .aqua) == .darkAqua
+        searchField.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
+        searchField.textColor = isDark ? .white : .black
         let font = searchField.font ?? .preferredFont(forTextStyle: .title3)
         searchField.placeholderAttributedString = NSAttributedString(
             string: placeholder,
             attributes: [
-                .foregroundColor: NSColor.secondaryLabelColor,
+                .foregroundColor: isDark ? NSColor.white.withAlphaComponent(0.55) : NSColor.black.withAlphaComponent(0.55),
                 .font: font
             ]
         )
