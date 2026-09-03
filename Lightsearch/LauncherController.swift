@@ -50,6 +50,9 @@ final class LauncherController: NSObject, NSWindowDelegate {
                 onOpen: { [weak self] application in
                     self?.open(application)
                 },
+                onOpenSystemPreference: { [weak self] preference in
+                    self?.open(preference)
+                },
                 onOpenFileSearch: { [weak self] in
                     self?.enterFileSearch()
                 },
@@ -173,6 +176,12 @@ final class LauncherController: NSObject, NSWindowDelegate {
         }
     }
 
+    private func open(_ preference: SystemPreference) {
+        hide()
+        guard let url = URL(string: preference.urlString) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
     private func copy(_ conversion: ConversionResult) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(conversion.copyText, forType: .string)
@@ -237,6 +246,8 @@ final class LauncherController: NSObject, NSWindowDelegate {
                     switch self.state.selectedResult() {
                     case let .conversion(conversion):
                         self.copy(conversion)
+                    case let .systemPreference(preference):
+                        self.open(preference)
                     case .fileSearch:
                         self.enterFileSearch()
                     case let .application(application):

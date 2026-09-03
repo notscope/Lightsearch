@@ -1,0 +1,301 @@
+//
+//  SystemPreferences.swift
+//  Lightsearch
+//
+
+import Foundation
+
+struct SystemPreference: Identifiable, Hashable, Sendable {
+    let id: String
+    let title: String
+    let subtitle: String?
+    let iconPath: String
+    let urlString: String
+    let searchText: String
+    let isSubitem: Bool
+}
+
+enum SystemPreferencesScanner {
+    private struct SearchEntry {
+        let sectionKey: String
+        let title: String
+        let index: String
+    }
+
+    nonisolated static func scan() -> [SystemPreference] {
+        let rootURL = URL(
+            fileURLWithPath: "/System/Library/ExtensionKit/Extensions",
+            isDirectory: true
+        )
+        let fileManager = FileManager.default
+
+        guard let extensionURLs = try? fileManager.contentsOfDirectory(
+            at: rootURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        return extensionURLs
+            .filter { $0.pathExtension == "appex" }
+            .flatMap(makePreferences(for:))
+            .sorted { lhs, rhs in
+                let titleComparison = lhs.title.localizedStandardCompare(rhs.title)
+                if titleComparison != .orderedSame {
+                    return titleComparison == .orderedAscending
+                }
+                return lhs.id < rhs.id
+            }
+    }
+
+    nonisolated private static func makePreferences(
+        for extensionURL: URL
+    ) -> [SystemPreference] {
+        guard let bundle = Bundle(url: extensionURL),
+              let info = bundle.infoDictionary,
+              let extensionAttributes = info["EXAppExtensionAttributes"] as? [String: Any],
+              let settingsAttributes = extensionAttributes["SettingsExtensionAttributes"]
+                  as? [String: Any],
+              extensionAttributes["EXExtensionPointIdentifier"] as? String
+                  == "com.apple.Settings.extension.ui",
+              settingsAttributes["allowsXAppleSystemPreferencesURLScheme"] as? Bool == true,
+              let searchTermsFileName = settingsAttributes["searchTermsFileName"] as? String,
+              let bundleIdentifier = bundle.bundleIdentifier,
+              let parentTitle = bundle.object(
+                  forInfoDictionaryKey: "CFBundleDisplayName"
+              ) as? String,
+              let searchTermsPath = bundle.path(
+                  forResource: searchTermsFileName,
+                  ofType: "searchTerms"
+              ) else {
+            return []
+        }
+
+        let entries = loadSearchEntries(from: searchTermsPath)
+        let searchableParts = [parentTitle]
+            + entries.flatMap { [$0.title, $0.index] }
+        let searchableText = searchableParts.joined(separator: " ")
+        let parent = SystemPreference(
+            id: bundleIdentifier,
+            title: parentTitle,
+            subtitle: nil,
+            iconPath: extensionURL.path,
+            urlString: makeURLString(bundleIdentifier: bundleIdentifier),
+            searchText: searchableText,
+            isSubitem: false
+        )
+
+        let children = entries.enumerated().map { index, entry in
+            SystemPreference(
+                id: "\(bundleIdentifier)#\(entry.sectionKey)#\(index)",
+                title: entry.title,
+                subtitle: parentTitle,
+                iconPath: extensionURL.path,
+                urlString: makeURLString(
+                    bundleIdentifier: bundleIdentifier,
+                    sectionKey: entry.sectionKey
+                ),
+                searchText: [parentTitle, entry.title, entry.index]
+                    .joined(separator: " "),
+                isSubitem: true
+            )
+        }
+
+        return [parent] + children
+    }
+
+    nonisolated private static func loadSearchEntries(from path: String) -> [SearchEntry] {
+        let url = URL(fileURLWithPath: path)
+        guard let data = try? Data(contentsOf: url),
+              let propertyList = try? PropertyListSerialization.propertyList(
+                  from: data,
+                  options: [],
+                  format: nil
+              ),
+              let sections = propertyList as? [String: Any] else {
+            return []
+        }
+
+        var entries: [SearchEntry] = []
+        for sectionKey in sections.keys.sorted() {
+            guard let section = sections[sectionKey] as? [String: Any],
+                  let localizableStrings = section["localizableStrings"] as? [[String: Any]
+                  ] else {
+                continue
+            }
+
+            for item in localizableStrings {
+                guard let title = item["title"] as? String,
+                      !title.isEmpty else {
+                    continue
+                }
+
+                entries.append(
+                    SearchEntry(
+                        sectionKey: sectionKey,
+                        title: title,
+                        index: item["index"] as? String ?? ""
+                    )
+                )
+            }
+        }
+        return entries
+    }
+
+    nonisolated private static func makeURLString(
+        bundleIdentifier: String,
+        sectionKey: String? = nil
+    ) -> String {
+        var urlString = "x-apple.systempreferences:\(bundleIdentifier)"
+        guard let sectionKey, !sectionKey.isEmpty else { return urlString }
+
+        let allowedCharacters = CharacterSet.alphanumerics.union(
+            CharacterSet(charactersIn: "-._~")
+        )
+        let encodedSection = sectionKey.addingPercentEncoding(
+            withAllowedCharacters: allowedCharacters
+        ) ?? sectionKey
+        urlString += "?\(encodedSection)"
+        return urlString
+    }
+}
+
+enum SystemPreferenceSearch {
+    private struct ScoredPreference {
+        let preference: SystemPreference
+        let score: Double
+    }
+
+    static func rankedResults(
+        _ preferences: [SystemPreference],
+        query: String
+    ) -> [SystemPreference] {
+        let queryTokens = tokens(from: query)
+        guard !queryTokens.isEmpty else { return [] }
+        let queryText = queryTokens.joined(separator: " ")
+
+        return preferences
+            .compactMap { preference -> ScoredPreference? in
+                guard let score = score(
+                    for: preference,
+                    queryTokens: queryTokens,
+                    queryText: queryText
+                ) else {
+                    return nil
+                }
+                return ScoredPreference(preference: preference, score: score)
+            }
+            .sorted { lhs, rhs in
+                if abs(lhs.score - rhs.score) > 0.001 {
+                    return lhs.score > rhs.score
+                }
+                if lhs.preference.isSubitem != rhs.preference.isSubitem {
+                    return !lhs.preference.isSubitem
+                }
+                let titleComparison = lhs.preference.title.localizedStandardCompare(
+                    rhs.preference.title
+                )
+                if titleComparison != .orderedSame {
+                    return titleComparison == .orderedAscending
+                }
+                return lhs.preference.id < rhs.preference.id
+            }
+            .map(\.preference)
+    }
+
+    private static func score(
+        for preference: SystemPreference,
+        queryTokens: [String],
+        queryText: String
+    ) -> Double? {
+        let titleTokens = tokens(from: preference.title)
+        let titleText = titleTokens.joined(separator: " ")
+        let compactTitle = titleTokens.joined()
+        let compactQuery = queryTokens.joined()
+
+        if titleText == queryText || compactTitle == compactQuery {
+            return 1_000
+        }
+
+        if titleText.hasPrefix(queryText) || compactTitle.hasPrefix(compactQuery) {
+            return 900 + coverage(queryTokens, in: titleTokens) * 30
+        }
+
+        if queryTokens.count == 1, titleTokens.contains(queryTokens[0]) {
+            return 850
+        }
+
+        if queryTokens.count > 1,
+           let titleScore = tokenMatchScore(queryTokens, in: titleTokens) {
+            return titleScore
+        }
+
+        let searchableTokens = tokens(from: preference.searchText)
+        if let keywordScore = tokenMatchScore(queryTokens, in: searchableTokens) {
+            return keywordScore - 100
+        }
+
+        return nil
+    }
+
+    private static func tokenMatchScore(
+        _ queryTokens: [String],
+        in fieldTokens: [String]
+    ) -> Double? {
+        guard !fieldTokens.isEmpty else { return nil }
+
+        var totalCoverage = 0.0
+        for queryToken in queryTokens {
+            guard let matchingToken = fieldTokens.first(where: {
+                $0 == queryToken || $0.hasPrefix(queryToken)
+            }) else {
+                return nil
+            }
+            totalCoverage += min(
+                Double(queryToken.count) / Double(matchingToken.count),
+                1
+            )
+        }
+
+        let averageCoverage = totalCoverage / Double(queryTokens.count)
+        return 760 + averageCoverage * 30
+    }
+
+    private static func coverage(_ queryTokens: [String], in fieldTokens: [String]) -> Double {
+        guard !fieldTokens.isEmpty else { return 0 }
+        let queryLength = queryTokens.joined().count
+        let fieldLength = fieldTokens.joined().count
+        return min(Double(queryLength) / Double(fieldLength), 1)
+    }
+
+    private static func tokens(from value: String) -> [String] {
+        let folded = value.folding(
+            options: [.diacriticInsensitive, .caseInsensitive, .widthInsensitive],
+            locale: .current
+        )
+        var tokens: [String] = []
+        var token = ""
+
+        for character in folded {
+            if character.isLetter || character.isNumber {
+                token.append(character.lowercased())
+            } else if !token.isEmpty {
+                tokens.append(normalizeToken(token))
+                token = ""
+            }
+        }
+
+        if !token.isEmpty {
+            tokens.append(normalizeToken(token))
+        }
+        return tokens
+    }
+
+    private static func normalizeToken(_ token: String) -> String {
+        guard token.count > 4, token.hasSuffix("s"), !token.hasSuffix("ss") else {
+            return token
+        }
+        return String(token.dropLast())
+    }
+}

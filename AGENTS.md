@@ -9,6 +9,7 @@ This repository is a small macOS SwiftUI/AppKit launcher. Production code lives 
 - `LauncherState.swift` contains application models, ranking, launch history, and selection state.
 - `ContentView.swift` contains the launcher UI and reusable result-row views.
 - `FileSearch.swift` contains Spotlight file search and recent-file persistence.
+- `SystemPreferences.swift` discovers Apple Settings extensions, localized search terms, and URLs.
 - `Assets.xcassets/` contains the app icon and color assets.
 
 The Xcode project is `Lightsearch.xcodeproj`. There is currently no test target.

@@ -2,7 +2,6 @@
 //  ContentView.swift
 //  Lightsearch
 //
-//  The launcher surface is SwiftUI content hosted inside an AppKit NSPanel.
 //
 
 import AppKit
@@ -38,6 +37,7 @@ struct ContentView: View {
     @ObservedObject var state: LauncherState
 
     let onOpen: (InstalledApplication) -> Void
+    let onOpenSystemPreference: (SystemPreference) -> Void
     let onOpenFileSearch: () -> Void
     let onBackFromFileSearch: () -> Void
     let onOpenFile: (SearchFile) -> Void
@@ -48,6 +48,7 @@ struct ContentView: View {
     init(
         state: LauncherState,
         onOpen: @escaping (InstalledApplication) -> Void,
+        onOpenSystemPreference: @escaping (SystemPreference) -> Void = { _ in },
         onOpenFileSearch: @escaping () -> Void = {},
         onBackFromFileSearch: @escaping () -> Void = {},
         onOpenFile: @escaping (SearchFile) -> Void = { _ in },
@@ -57,6 +58,7 @@ struct ContentView: View {
     ) {
         self.state = state
         self.onOpen = onOpen
+        self.onOpenSystemPreference = onOpenSystemPreference
         self.onOpenFileSearch = onOpenFileSearch
         self.onBackFromFileSearch = onBackFromFileSearch
         self.onOpenFile = onOpenFile
@@ -219,6 +221,21 @@ struct ContentView: View {
                 onOpen: {
                     state.selectedIndex = index
                     onCopyConversion(conversion)
+                }
+            )
+        case let .systemPreference(preference):
+            SearchResultRow(
+                title: preference.title,
+                subtitle: preference.subtitle,
+                icon: WorkspaceIconView(path: preference.iconPath),
+                isSelected: state.selectedIndex == index,
+                accessibilityHint: "Opens this setting in System Settings",
+                onSelect: {
+                    state.selectedIndex = index
+                },
+                onOpen: {
+                    state.selectedIndex = index
+                    onOpenSystemPreference(preference)
                 }
             )
         case .fileSearch:
@@ -512,53 +529,40 @@ private struct ConversionResultCard: View {
     let onOpen: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Calculator")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.8)
-                .padding(.horizontal, 12)
-                .frame(height: 28, alignment: .leading)
-
-            HStack(spacing: 0) {
-                valueColumn(
-                    value: conversion.inputValue,
-                    label: conversion.inputLabel
-                )
-                Divider()
-                    .frame(height: 56)
-
-                Image(systemName: "arrow.right")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 48)
-
-                Divider()
-                    .frame(height: 56)
-                valueColumn(
-                    value: conversion.outputValue,
-                    label: conversion.outputLabel
-                )
-            }
-            .padding(.horizontal, 10)
-            .frame(
-                height: LauncherMetrics.conversionCardHeight
-                    - LauncherMetrics.conversionLabelHeight
+        HStack(spacing: 0) {
+            valueColumn(
+                value: conversion.inputValue,
+                label: conversion.inputLabel
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Image(systemName: "arrow.right")
+                .font(.title.weight(.semibold))
+                .foregroundStyle(isSelected ? .primary : .secondary)
+                .frame(width: 32)
+
+            valueColumn(
+                value: conversion.outputValue,
+                label: conversion.outputLabel
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .frame(height: LauncherMetrics.conversionCardHeight, alignment: .top)
-        .background {
-            if isSelected {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.accentColor)
-            } else {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(.thinMaterial)
-            }
+        .overlay(alignment: .bottom) {
+            Text("Calculator")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.primary.opacity(0.7) : Color.secondary)
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .padding(.bottom, 6)
         }
-        .contentShape(Rectangle())
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isSelected ? Color.accentColor : Color.conversionContainerBackground)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
             ClickTargetRepresentable(
                 onSingleClick: onSelect,
@@ -575,26 +579,30 @@ private struct ConversionResultCard: View {
     private func valueColumn(value: String, label: String) -> some View {
         VStack(spacing: 6) {
             Text(value)
-                .font(.title3.weight(.bold))
+                .font(.title.weight(.bold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
 
             Text(label)
-                .font(.caption.weight(.semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(.thinMaterial, in: Capsule())
+                .background {
+                    Capsule()
+                        .fill(isSelected ? Color.white.opacity(0.2) : Color.conversionPillBackground)
+                }
         }
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, 10)
     }
 }
 
 private struct SearchResultRow<Icon: View>: View {
     let title: String
-    let subtitle: String
+    let subtitle: String?
     let icon: Icon
     let isSelected: Bool
     let accessibilityHint: String
@@ -606,17 +614,19 @@ private struct SearchResultRow<Icon: View>: View {
             icon
                 .frame(width: 34, height: 34)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: subtitle == nil ? 0 : 3) {
                 Text(title)
                     .font(.title3.weight(.medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text(subtitle)
-                    .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                    .opacity(isSelected ? 0.85 : 1.0)
-                    .lineLimit(1)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(.subheadline, design: .monospaced))
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .opacity(isSelected ? 0.85 : 1.0)
+                        .lineLimit(1)
+                }
             }
 
             Spacer(minLength: 12)
@@ -733,6 +743,20 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
             }
         }
     }
+}
+
+private extension Color {
+    static let conversionContainerBackground = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(white: 1.0, alpha: 0.10)
+            : NSColor(white: 1.0, alpha: 0.65)
+    })
+
+    static let conversionPillBackground = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(white: 1.0, alpha: 0.12)
+            : NSColor(white: 0.0, alpha: 0.06)
+    })
 }
 
 private extension View {

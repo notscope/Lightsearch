@@ -22,6 +22,7 @@ enum LauncherPage: Equatable {
 
 enum LauncherResult: Identifiable {
     case conversion(ConversionResult)
+    case systemPreference(SystemPreference)
     case application(InstalledApplication)
     case fileSearch
 
@@ -29,6 +30,8 @@ enum LauncherResult: Identifiable {
         switch self {
         case let .conversion(conversion):
             return conversion.id
+        case let .systemPreference(preference):
+            return preference.id
         case let .application(application):
             return application.id
         case .fileSearch:
@@ -418,6 +421,8 @@ final class LauncherState: ObservableObject {
     private var previousResults: [InstalledApplication] = []
     private let maximumFileResults = 50
     private let maximumApplicationResults = 20
+    private let maximumSystemPreferenceResults = 20
+    @Published private(set) var systemPreferences: [SystemPreference] = []
 
     init(previewApplications: [InstalledApplication] = []) {
         applications = previewApplications
@@ -471,13 +476,17 @@ final class LauncherState: ObservableObject {
         hasStartedLoading = true
 
         Task { [weak self] in
-            let applications = await Task.detached(priority: .userInitiated) {
-                InstalledApplicationScanner.scan()
+            let resources = await Task.detached(priority: .userInitiated) {
+                (
+                    applications: InstalledApplicationScanner.scan(),
+                    systemPreferences: SystemPreferencesScanner.scan()
+                )
             }.value
 
             guard !Task.isCancelled else { return }
-            self?.applications = applications
-            self?.previousResults = applications
+            self?.applications = resources.applications
+            self?.systemPreferences = resources.systemPreferences
+            self?.previousResults = resources.applications
             self?.isLoading = false
             self?.selectedIndex = 0
             self?.rememberNonEmptyResults()
@@ -642,6 +651,16 @@ final class LauncherState: ObservableObject {
         if let conversionResult {
             results.append(.conversion(conversionResult))
         }
+
+        let rankedPreferences = SystemPreferenceSearch.rankedResults(
+            systemPreferences,
+            query: query
+        )
+        results.append(
+            contentsOf: rankedPreferences
+                .prefix(maximumSystemPreferenceResults)
+                .map { .systemPreference($0) }
+        )
 
         var candidates = applications
         let searchText = query.trimmingCharacters(in: .whitespacesAndNewlines)
