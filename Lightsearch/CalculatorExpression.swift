@@ -127,9 +127,11 @@ enum CalculatorExpressionEvaluator {
                     tokens.append(.power)
                 case "%":
                     // A directly attached percent followed by whitespace,
-                    // punctuation, or the end is postfix percentage syntax
-                    // (50% - 3). A spaced percent or one followed by an
-                    // operand remains the binary modulo operator (10 % 3).
+                    // punctuation, an implicit multiplier, or the end is
+                    // postfix percentage syntax (50% - 3, 50%(2+3)).
+                    // A spaced percent or one directly followed by an
+                    // operand without implicit multiplication remains
+                    // the binary modulo operator (10 % 3, 50%-3).
                     let nextIndex = index + 1
                     let nextCharacter = nextIndex < characters.count
                         ? characters[nextIndex]
@@ -140,6 +142,10 @@ enum CalculatorExpressionEvaluator {
                             || nextCharacter == ")"
                             || nextCharacter == ","
                             || nextCharacter == "%"
+                            || nextCharacter == "("
+                            || nextCharacter == "π"
+                            || nextCharacter == "τ"
+                            || (nextCharacter != nil && isIdentifierStart(nextCharacter!))
                     )
                     index += 1
                     tokens.append(isPostfix ? .percentPostfix : .percent)
@@ -250,8 +256,8 @@ enum CalculatorExpressionEvaluator {
 
             var usedGroupingSeparator: Character?
 
-            // Grouping separators cannot follow a leading zero (e.g. 0.125 or 0,125 is always decimal)
-            let allowsGrouping = (characters[start] != "0" || integerDigitCount > 1)
+            // Grouping separators cannot follow leading zeros (e.g. 0.125, 0,125, or 00,123 is not grouping)
+            let allowsGrouping = characters[start] != "0"
 
             if allowsGrouping, index < characters.count, (characters[index] == "." || characters[index] == ",") {
                 let sep = characters[index]
@@ -402,6 +408,21 @@ enum CalculatorExpressionEvaluator {
 
         let tokens: [Token]
         var index = 0
+        private static let maxRecursionDepth = 200
+        private var recursionDepth = 0
+
+        init(tokens: [Token]) {
+            self.tokens = tokens
+        }
+
+        private mutating func enterRecursion() -> Bool {
+            recursionDepth += 1
+            return recursionDepth <= Self.maxRecursionDepth
+        }
+
+        private mutating func leaveRecursion() {
+            recursionDepth -= 1
+        }
 
         mutating func parse() -> Double? {
             guard let value = parseAdditive(), current == .end, value.isFinite else {
@@ -415,6 +436,9 @@ enum CalculatorExpressionEvaluator {
         }
 
         private mutating func parseAdditive() -> Double? {
+            guard enterRecursion() else { return nil }
+            defer { leaveRecursion() }
+
             guard var value = parseMultiplicative() else { return nil }
 
             while true {
@@ -469,6 +493,9 @@ enum CalculatorExpressionEvaluator {
         }
 
         private mutating func parseUnary() -> Double? {
+            guard enterRecursion() else { return nil }
+            defer { leaveRecursion() }
+
             if consume(.plus) {
                 return parseUnary()
             }
@@ -836,7 +863,7 @@ enum CalculatorExpressionEvaluator {
                       abs(arg) < Double(Int64.max) else {
                     return nil
                 }
-                let intVal = abs(Int64(arg))
+                let intVal = abs(Int64(arg.rounded()))
                 if index == 0 {
                     result = intVal
                 } else {
@@ -867,16 +894,16 @@ enum CalculatorExpressionEvaluator {
                       arg.rounded(.towardZero) == arg else {
                     return nil
                 }
-                let absArg = abs(arg)
+                let absArg = abs(arg.rounded())
                 if index == 0 {
                     result = absArg
                 } else {
                     if result == 0 || absArg == 0 {
                         result = 0
                     } else {
-                        let g = Double(gcd2(Int64(min(result, Double(Int64.max - 1))), Int64(min(absArg, Double(Int64.max - 1)))))
+                        let g = Double(gcd2(Int64(min(result.rounded(), Double(Int64.max - 1))), Int64(min(absArg, Double(Int64.max - 1)))))
                         guard g > 0 else { return nil }
-                        result = (result / g) * absArg
+                        result = (result.rounded() / g) * absArg
                         guard result.isFinite else { return nil }
                     }
                 }

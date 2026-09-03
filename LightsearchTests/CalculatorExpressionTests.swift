@@ -71,6 +71,10 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("50%-3", equals: 2)
         assertValue("50 % -3", equals: 2)
         assertValue("100 * 25%", equals: 25)
+        assertValue("50%(2 + 3)", equals: 2.5)
+        assertValue("50 % (2 + 3)", equals: 0)
+        assertValue("50%pi", equals: 0.5 * Double.pi)
+        assertValue("50%π", equals: 0.5 * Double.pi)
         assertValue("percent(25)", equals: 0.25)
         assertValue("mod(10, 4)", equals: 2)
         assertValue("modulo(17, 5)", equals: 2)
@@ -351,7 +355,9 @@ final class CalculatorExpressionTests: XCTestCase {
             "$50",
             "100$",
             "@user",
-            "#hashtag"
+            "#hashtag",
+            "0,123",
+            "00,123"
         ]
 
         for expression in invalidExpressions {
@@ -715,16 +721,24 @@ final class CalculatorExpressionTests: XCTestCase {
     func testDeeplyNestedParentheses() {
         assertValue("((((((((2 + 3))))))))", equals: 5)
         assertValue("(1 + (2 * (3 + (4 * (5 - 3)))))", equals: 23)
+
+        // Recursion depth limit guard: returns nil instead of overflowing stack
+        let nested300 = String(repeating: "(", count: 300) + "1" + String(repeating: ")", count: 300)
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate(nested300))
+
+        let unary300 = String(repeating: "-", count: 300) + "1"
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate(unary300))
     }
 
     private func assertValue(
         _ expression: String,
         equals expected: Double,
         accuracy: Double = 1e-10,
+        locale: Locale = Locale(identifier: "en_US"),
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        guard let actual = CalculatorExpressionEvaluator.evaluate(expression) else {
+        guard let actual = CalculatorExpressionEvaluator.evaluate(expression, locale: locale) else {
             XCTFail("Expected a value for \(expression.debugDescription)", file: file, line: line)
             return
         }
@@ -860,6 +874,8 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("lcm(-4, 6)", equals: 12)
         assertValue("lcm(12, 18, 24)", equals: 72)
         assertValue("lcm(2, 3, 5)", equals: 30)
+        assertValue("lcm(3, 4, 6, 8, 12)", equals: 24)
+        assertValue("lcm(6, 8, 10, 12, 14, 16)", equals: 1680)
         assertValue("lcm(0, 5)", equals: 0)
         assertValue("lcm(5, 0)", equals: 0)
         XCTAssertNil(CalculatorExpressionEvaluator.evaluate("lcm(4.5, 6)"))
