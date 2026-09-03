@@ -979,20 +979,60 @@ enum ConversionEngine {
     }
 
     private static func formatNumber(_ value: Double) -> String {
+        if value != 0, abs(value) >= 1e15 || abs(value) < 1e-9 {
+            return formatScientificNumber(value)
+        }
+
         let formatter = NumberFormatter()
         formatter.locale = Locale.current
-        formatter.usesGroupingSeparator = false
-        if value != 0, abs(value) >= 1e15 || abs(value) < 1e-9 {
-            formatter.numberStyle = .scientific
-            formatter.usesSignificantDigits = true
-            formatter.maximumSignificantDigits = 12
-            formatter.minimumSignificantDigits = 1
-        } else {
-            formatter.numberStyle = .decimal
-            formatter.maximumFractionDigits = 12
-            formatter.minimumFractionDigits = 0
-        }
+        formatter.usesGroupingSeparator = true
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 10
+        formatter.minimumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    private static func formatScientificNumber(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale.current
+        formatter.numberStyle = .scientific
+        formatter.usesSignificantDigits = true
+        formatter.maximumSignificantDigits = 5
+        formatter.minimumSignificantDigits = 1
+
+        guard let raw = formatter.string(from: NSNumber(value: value)) else {
+            return String(value)
+        }
+
+        let parts = raw.split(whereSeparator: { $0 == "E" || $0 == "e" })
+        guard parts.count == 2 else { return raw }
+
+        let mantissa = String(parts[0])
+        var exponentStr = String(parts[1])
+
+        let isNegative = exponentStr.hasPrefix("-") || exponentStr.hasPrefix("−")
+        exponentStr = exponentStr.trimmingCharacters(in: CharacterSet(charactersIn: "+-−"))
+
+        guard let expValue = Int(exponentStr) else { return raw }
+
+        let formattedExp = isNegative ? "⁻\(toSuperscript(String(expValue)))" : toSuperscript(String(expValue))
+        return "\(mantissa) × 10\(formattedExp)"
+    }
+
+    private static func toSuperscript(_ string: String) -> String {
+        let superscripts: [Character: Character] = [
+            "0": "⁰",
+            "1": "¹",
+            "2": "²",
+            "3": "³",
+            "4": "⁴",
+            "5": "⁵",
+            "6": "⁶",
+            "7": "⁷",
+            "8": "⁸",
+            "9": "⁹"
+        ]
+        return String(string.map { superscripts[$0] ?? $0 })
     }
 
     private static func firstMatch(in text: String, pattern: String) -> [String]? {

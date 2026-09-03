@@ -738,4 +738,36 @@ final class CalculatorExpressionTests: XCTestCase {
         formatter.maximumFractionDigits = 12
         return formatter.string(from: NSNumber(value: value)) ?? String(value)
     }
+
+    func testTidyLargeNumberAndScientificFormatting() {
+        guard let powerResult = ConversionEngine.result(for: "57^144") else {
+            XCTFail("Expected result for 57^144")
+            return
+        }
+
+        XCTAssertTrue(
+            powerResult.outputValue.contains("× 10²⁵²"),
+            "Expected output to contain scientific notation with superscripts, got: \(powerResult.outputValue)"
+        )
+        XCTAssertFalse(
+            powerResult.outputValue.contains("E"),
+            "Expected output not to contain raw 'E', got: \(powerResult.outputValue)"
+        )
+        XCTAssertFalse(
+            powerResult.outputValue.contains("e"),
+            "Expected output not to contain raw 'e', got: \(powerResult.outputValue)"
+        )
+
+        if let smallResult = ConversionEngine.result(for: "1e-12 * 2") {
+            XCTAssertTrue(
+                smallResult.outputValue.contains("× 10⁻¹²"),
+                "Expected output to contain negative superscripts, got: \(smallResult.outputValue)"
+            )
+        }
+
+        assertValue("10²", equals: 100)
+        assertValue("2³", equals: 8)
+        assertValue("10⁻²", equals: 0.01)
+        assertValue("7 × 10²", equals: 700)
+    }
 }

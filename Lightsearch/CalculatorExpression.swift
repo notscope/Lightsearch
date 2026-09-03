@@ -115,7 +115,10 @@ enum CalculatorExpressionEvaluator {
                     guard let number = readNumber() else { return nil }
                     tokens.append(.number(number))
                 default:
-                    if isASCIIDigit(character) {
+                    if let superscriptValue = readSuperscriptNumber() {
+                        tokens.append(.power)
+                        tokens.append(.number(superscriptValue))
+                    } else if isASCIIDigit(character) {
                         guard let number = readNumber() else { return nil }
                         tokens.append(.number(number))
                     } else if isIdentifierStart(character) {
@@ -125,6 +128,36 @@ enum CalculatorExpressionEvaluator {
                     }
                 }
             }
+        }
+
+        private mutating func readSuperscriptNumber() -> Double? {
+            let startIndex = index
+            guard index < characters.count else { return nil }
+            let superscripts: [Character: Character] = [
+                "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
+                "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9"
+            ]
+
+            var isNegative = false
+            let firstChar = characters[index]
+            if firstChar == "⁻" {
+                isNegative = true
+                index += 1
+            } else if firstChar == "⁺" {
+                index += 1
+            }
+
+            var asciiString = ""
+            while index < characters.count, let digit = superscripts[characters[index]] {
+                asciiString.append(digit)
+                index += 1
+            }
+
+            guard !asciiString.isEmpty, let value = Double(asciiString) else {
+                index = startIndex
+                return nil
+            }
+            return isNegative ? -value : value
         }
 
         private mutating func skipWhitespace() -> Bool {
