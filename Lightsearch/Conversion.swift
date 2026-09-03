@@ -42,7 +42,11 @@ enum ConversionEngine {
             return dateTimeResult
         }
 
-        return measurementResult(for: cleanedQuery)
+        if let measurementResult = measurementResult(for: cleanedQuery) {
+            return measurementResult
+        }
+
+        return calculatorResult(for: cleanedQuery)
     }
 
     static func timeZoneLocation(for query: String) -> String? {
@@ -202,6 +206,22 @@ enum ConversionEngine {
             outputValue: outputText,
             outputLabel: target.name,
             copyText: outputText
+        )
+    }
+
+    private static func calculatorResult(for query: String) -> ConversionResult? {
+        guard let value = CalculatorExpressionEvaluator.evaluate(query) else {
+            return nil
+        }
+
+        let output = formatNumber(value == 0 ? 0 : value)
+        return ConversionResult(
+            categoryTitle: "Calculator",
+            inputValue: query,
+            inputLabel: "Expression",
+            outputValue: output,
+            outputLabel: "Result",
+            copyText: output
         )
     }
 

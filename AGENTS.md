@@ -10,13 +10,14 @@ This repository is a small macOS SwiftUI/AppKit launcher. Production code lives 
 - `LauncherState.swift` owns core query/selection state and delegates optional work to the feature registry.
 - `LauncherResult.swift` contains the shared result/page boundary used by the core and extensions.
 - `LauncherFeatures.swift` is the only feature registry; its short enabled-feature list is the removal point for optional features.
-- `CalculatorFeature.swift` adapts calculator, date/time, and time-zone behavior; `Conversion.swift`, `TimeZoneResolver.swift`, and `ConversionUnits*.swift` are its implementation files.
+- `CalculatorFeature.swift` adapts calculator, date/time, and time-zone behavior; `CalculatorExpression.swift`, `Conversion.swift`, `TimeZoneResolver.swift`, and `ConversionUnits*.swift` are its implementation files.
 - `ContentView.swift` contains the launcher UI and reusable result-row views.
 - `FileSearch.swift` contains the optional Spotlight file-search feature and recent-file persistence.
 - `SystemPreferences.swift` contains the optional Apple Settings discovery, search, and URL feature.
+- `LightsearchTests/CalculatorExpressionTests.swift` contains the calculator parser and `ConversionEngine` regression suite.
 - `Assets.xcassets/` contains the app icon and color assets.
 
-The Xcode project is `Lightsearch.xcodeproj`. There is currently no test target.
+The Xcode project is `Lightsearch.xcodeproj`, with the `LightsearchTests` XCTest target.
 
 ## Build, Test, and Development Commands
 
@@ -24,10 +25,11 @@ Run these from the repository root:
 
 ```sh
 xcodebuild -project Lightsearch.xcodeproj -scheme Lightsearch -configuration Debug build
+xcodebuild -project Lightsearch.xcodeproj -scheme Lightsearch -configuration Debug test
 git diff --check
 ```
 
-The first command compiles the app. Run `./relaunch.sh` only after changes that touch Swift/source code and require the rebuilt app to be refreshed; Markdown-only documentation edits do not require a relaunch. The script builds the configured Release product, quits any running Lightsearch instance, and launches the rebuilt app. It uses the default automatic code-signing configuration. `git diff --check` catches whitespace errors.
+The first command compiles the app; the second runs the XCTest target, including the calculator correctness suite. Run `./relaunch.sh` only after changes that touch Swift/source code and require the rebuilt app to be refreshed; Markdown-only documentation edits do not require a relaunch. The script builds the configured Release product, quits any running Lightsearch instance, and launches the rebuilt app. It uses the default automatic code-signing configuration. `git diff --check` catches whitespace errors.
 
 ## Optional Feature Architecture
 
@@ -49,7 +51,7 @@ After a significant change passes validation, merge its branch back into `main`,
 
 ## Testing Guidelines
 
-Because no automated test target exists, validate changes with a clean `xcodebuild` build and manual checks of the menu-bar item, keyboard navigation, panel resizing, app launching, file search, and dismissal behavior. For UI changes, include a screenshot or a concise manual reproduction in the pull request.
+Run the Debug build and XCTest commands above. Calculator changes must keep the expression tests green; add table-driven cases for every new operator/function and invalid domain or overflow case. Also manually check the menu-bar item, keyboard navigation, panel resizing, app launching, file search, and dismissal behavior. For UI changes, include a screenshot or a concise manual reproduction in the pull request.
 
 ## Commit & Pull Request Guidelines
 

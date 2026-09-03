@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		B04256B930482FC3007BC183 /* Lightsearch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lightsearch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D68EA63C9533485784AE8330E6BCC045 /* LightsearchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LightsearchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +17,32 @@
 			path = Lightsearch;
 			sourceTree = "<group>";
 		};
+		66972A193D6C4AF8A17E21F3A08B9D23 /* LightsearchTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LightsearchTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXContainerItemProxy section */
+		59759C0CF903495EA499C6399CD8006A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B04256B130482FC3007BC183 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B04256B830482FC3007BC183;
+			remoteInfo = Lightsearch;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		B04256B630482FC3007BC183 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D26B7D3E76AE43CD8EE31893A5A43141 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -41,11 +64,20 @@
 			isa = PBXGroup;
 			children = (
 				B04256B930482FC3007BC183 /* Lightsearch.app */,
+				D68EA63C9533485784AE8330E6BCC045 /* LightsearchTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXTargetDependency section */
+		3D365E56E08743B8A56B2FCE8EB97936 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B04256B830482FC3007BC183 /* Lightsearch */;
+			targetProxy = 59759C0CF903495EA499C6399CD8006A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXNativeTarget section */
 		B04256B830482FC3007BC183 /* Lightsearch */ = {
@@ -70,6 +102,29 @@
 			productReference = B04256B930482FC3007BC183 /* Lightsearch.app */;
 			productType = "com.apple.product-type.application";
 		};
+		6E7A52F457574C348D467A730FD06A21 /* LightsearchTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AC72555C935A409B80BA676232E46E5E /* Build configuration list for PBXNativeTarget "LightsearchTests" */;
+			buildPhases = (
+				ABDB370FE003463580E80186E29BF350 /* Sources */,
+				D26B7D3E76AE43CD8EE31893A5A43141 /* Frameworks */,
+				53F545967BD848ED83978DE6A52E7AC9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3D365E56E08743B8A56B2FCE8EB97936 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				66972A193D6C4AF8A17E21F3A08B9D23 /* LightsearchTests */,
+			);
+			name = LightsearchTests;
+			packageProductDependencies = (
+			);
+			productName = LightsearchTests;
+			productReference = D68EA63C9533485784AE8330E6BCC045 /* LightsearchTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +137,10 @@
 				TargetAttributes = {
 					B04256B830482FC3007BC183 = {
 						CreatedOnToolsVersion = 26.0;
+					};
+					6E7A52F457574C348D467A730FD06A21 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = B04256B830482FC3007BC183;
 					};
 				};
 			};
@@ -100,6 +159,7 @@
 			projectRoot = "";
 			targets = (
 				B04256B830482FC3007BC183 /* Lightsearch */,
+				6E7A52F457574C348D467A730FD06A21 /* LightsearchTests */,
 			);
 		};
 /* End PBXProject section */
@@ -112,10 +172,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		53F545967BD848ED83978DE6A52E7AC9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		B04256B530482FC3007BC183 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ABDB370FE003463580E80186E29BF350 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -311,6 +385,54 @@
 			};
 			name = Release;
 		};
+		0CCA3AEB0711443B851F5D56636F1F6C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = G2USZDMKM5;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.notscope.LightsearchTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lightsearch.app/Contents/MacOS/Lightsearch";
+			};
+			name = Debug;
+		};
+		A28986D0DDAC4767B648AF60B704086F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = G2USZDMKM5;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.notscope.LightsearchTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lightsearch.app/Contents/MacOS/Lightsearch";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -328,6 +450,15 @@
 			buildConfigurations = (
 				B04256C530482FC5007BC183 /* Debug */,
 				B04256C630482FC5007BC183 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AC72555C935A409B80BA676232E46E5E /* Build configuration list for PBXNativeTarget "LightsearchTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0CCA3AEB0711443B851F5D56636F1F6C /* Debug */,
+				A28986D0DDAC4767B648AF60B704086F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
