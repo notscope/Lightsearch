@@ -12,13 +12,14 @@ final class CalculatorFeature: LauncherSearchFeature {
 
     private let timeZoneResolver = TimeZoneResolver()
     private var timeZoneResolutionTask: Task<Void, Never>?
-    private var resolvedTimeZone: TimeZone?
+    private var resolvedLocation: ResolvedLocation?
     private var currentQuery = ""
 
     func searchResults(for context: LauncherSearchContext) -> LauncherFeatureSearchOutput {
         guard let conversion = ConversionEngine.result(
             for: context.query,
-            resolvedTimeZone: resolvedTimeZone
+            resolvedTimeZone: resolvedLocation?.timeZone,
+            resolvedCountry: resolvedLocation?.country
         ) else {
             return LauncherFeatureSearchOutput(
                 results: [],
@@ -37,8 +38,12 @@ final class CalculatorFeature: LauncherSearchFeature {
         stop()
         guard page == .applications,
               let location = ConversionEngine.timeZoneLocation(for: query),
-              location.count >= 2,
-              ConversionEngine.result(for: query) == nil else {
+              location.count >= 2 else {
+            return
+        }
+
+        if let immediateResult = ConversionEngine.result(for: query),
+           immediateResult.inputLabel != "Current time" {
             return
         }
 
@@ -51,13 +56,13 @@ final class CalculatorFeature: LauncherSearchFeature {
             }
 
             guard !Task.isCancelled, let self else { return }
-            let timeZone = await self.timeZoneResolver.resolve(location: location)
+            let locationInfo = await self.timeZoneResolver.resolve(location: location)
 
             guard !Task.isCancelled, self.currentQuery == querySnapshot else {
                 return
             }
 
-            self.resolvedTimeZone = timeZone
+            self.resolvedLocation = locationInfo
             self.onChange?()
         }
     }
@@ -66,6 +71,6 @@ final class CalculatorFeature: LauncherSearchFeature {
         timeZoneResolutionTask?.cancel()
         timeZoneResolutionTask = nil
         timeZoneResolver.cancel()
-        resolvedTimeZone = nil
+        resolvedLocation = nil
     }
 }

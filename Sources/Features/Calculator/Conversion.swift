@@ -26,6 +26,7 @@ enum ConversionEngine {
         for query: String,
         now: Date = Date(),
         resolvedTimeZone: TimeZone? = nil,
+        resolvedCountry: String? = nil,
         locale: Locale = .current
     ) -> ConversionResult? {
         let cleanedQuery = cleanQuery(query)
@@ -38,7 +39,8 @@ enum ConversionEngine {
         if let dateTimeResult = dateTimeResult(
             for: cleanedQuery,
             now: now,
-            resolvedTimeZone: resolvedTimeZone
+            resolvedTimeZone: resolvedTimeZone,
+            resolvedCountry: resolvedCountry
         ) {
             return dateTimeResult
         }
@@ -336,7 +338,8 @@ enum ConversionEngine {
     private static func dateTimeResult(
         for query: String,
         now: Date,
-        resolvedTimeZone: TimeZone?
+        resolvedTimeZone: TimeZone?,
+        resolvedCountry: String? = nil
     ) -> ConversionResult? {
         let splitQuery = splitQuery(query)
         let normalizedSource = normalizeUnit(splitQuery.source)
@@ -385,7 +388,8 @@ enum ConversionEngine {
         if let currentTimeResult = currentTimeResult(
             for: query,
             now: now,
-            resolvedTimeZone: resolvedTimeZone
+            resolvedTimeZone: resolvedTimeZone,
+            resolvedCountry: resolvedCountry
         ) {
             return currentTimeResult
         }
@@ -519,12 +523,17 @@ enum ConversionEngine {
     private static func currentTimeResult(
         for sourceText: String,
         now: Date,
-        resolvedTimeZone: TimeZone?
+        resolvedTimeZone: TimeZone?,
+        resolvedCountry: String? = nil
     ) -> ConversionResult? {
         guard let locationText = currentTimeLocation(from: sourceText),
               let targetTimeZone = timeZone(for: locationText) ?? resolvedTimeZone else {
             return nil
         }
+
+        let countryName = resolvedCountry
+            ?? country(for: locationText, timeZone: targetTimeZone)
+            ?? "Current time"
 
         let output = formatTimeWithDateContext(
             now,
@@ -534,7 +543,7 @@ enum ConversionEngine {
         return ConversionResult(
             categoryTitle: "Date & Time",
             inputValue: "Time in \(locationText)",
-            inputLabel: "Current time",
+            inputLabel: countryName,
             outputValue: output,
             outputLabel: timeZoneComparisonLabel(targetTimeZone, at: now),
             copyText: output
@@ -918,6 +927,85 @@ enum ConversionEngine {
         }
 
         return TimeZone(identifier: text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private static func country(for locationText: String, timeZone: TimeZone) -> String? {
+        let normalized = normalizeUnit(locationText)
+        let directLocationCountries: [String: String] = [
+            "los angeles": "United States",
+            "new york": "United States",
+            "chicago": "United States",
+            "seattle": "United States",
+            "san francisco": "United States",
+            "london": "United Kingdom",
+            "uk": "United Kingdom",
+            "paris": "France",
+            "berlin": "Germany",
+            "rome": "Italy",
+            "madrid": "Spain",
+            "tokyo": "Japan",
+            "japan": "Japan",
+            "seoul": "South Korea",
+            "korea": "South Korea",
+            "kolkata": "India",
+            "delhi": "India",
+            "mumbai": "India",
+            "india": "India",
+            "jakarta": "Indonesia",
+            "makassar": "Indonesia",
+            "jayapura": "Indonesia",
+            "indonesia": "Indonesia",
+            "singapore": "Singapore",
+            "bangkok": "Thailand",
+            "thailand": "Thailand",
+            "hong kong": "Hong Kong",
+            "taipei": "Taiwan",
+            "taiwan": "Taiwan",
+            "sydney": "Australia",
+            "melbourne": "Australia",
+            "australia": "Australia",
+            "auckland": "New Zealand",
+            "new zealand": "New Zealand",
+            "dubai": "United Arab Emirates",
+            "toronto": "Canada",
+            "vancouver": "Canada",
+            "canada": "Canada"
+        ]
+
+        if let country = directLocationCountries[normalized] {
+            return country
+        }
+
+        let id = timeZone.identifier
+        if id.hasPrefix("America/New_York") || id.hasPrefix("America/Los_Angeles") || id.hasPrefix("America/Chicago") || id.hasPrefix("America/Denver") || id.hasPrefix("America/Phoenix") {
+            return "United States"
+        } else if id == "Europe/London" {
+            return "United Kingdom"
+        } else if id == "Europe/Paris" {
+            return "France"
+        } else if id == "Europe/Berlin" {
+            return "Germany"
+        } else if id == "Asia/Tokyo" {
+            return "Japan"
+        } else if id == "Asia/Seoul" {
+            return "South Korea"
+        } else if id == "Asia/Jakarta" || id == "Asia/Makassar" || id == "Asia/Jayapura" {
+            return "Indonesia"
+        } else if id == "Asia/Singapore" {
+            return "Singapore"
+        } else if id == "Asia/Kolkata" {
+            return "India"
+        } else if id == "Asia/Bangkok" {
+            return "Thailand"
+        } else if id == "Asia/Vientiane" {
+            return "Laos"
+        } else if id == "Australia/Sydney" || id == "Australia/Melbourne" || id == "Australia/Brisbane" || id == "Australia/Perth" {
+            return "Australia"
+        } else if id == "Pacific/Auckland" {
+            return "New Zealand"
+        }
+
+        return nil
     }
 
     private static func timeZoneLabel(_ timeZone: TimeZone, at date: Date) -> String {
