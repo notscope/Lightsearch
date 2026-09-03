@@ -5,7 +5,6 @@
 
 import Darwin
 import Foundation
-import MapKit
 import XCTest
 @testable import Lightsearch
 
@@ -66,41 +65,6 @@ final class PerformanceBenchmarkTests: XCTestCase {
 
         let finderResults = ApplicationSearch.rankedResults(apps, query: "finder")
         XCTAssertEqual(finderResults.first?.name, "Finder", "Finder must be the top search result for 'finder'")
-    }
-
-    func testTimeCountryLabels() async {
-        let resolver = await TimeZoneResolver()
-        let seattleResolved = await resolver.resolve(location: "seattle")
-        XCTAssertEqual(seattleResolved?.country, "United States")
-
-        let laResolved = await resolver.resolve(location: "la")
-        XCTAssertEqual(laResolved?.country, "Laos")
-
-        let seattleConversion = ConversionEngine.result(
-            for: "time seattle",
-            resolvedTimeZone: seattleResolved?.timeZone,
-            resolvedCountry: seattleResolved?.country
-        )
-        XCTAssertEqual(seattleConversion?.inputLabel, "United States")
-
-        let laConversion = ConversionEngine.result(
-            for: "time la",
-            resolvedTimeZone: laResolved?.timeZone,
-            resolvedCountry: laResolved?.country
-        )
-        XCTAssertEqual(laConversion?.inputLabel, "Laos")
-
-        let tokyoConversion = ConversionEngine.result(for: "time tokyo")
-        XCTAssertEqual(tokyoConversion?.inputLabel, "Japan")
-
-        let londonConversion = ConversionEngine.result(for: "time london")
-        XCTAssertEqual(londonConversion?.inputLabel, "United Kingdom")
-
-        let drcConversion = ConversionEngine.result(for: "time drc")
-        XCTAssertEqual(drcConversion?.inputLabel, "Democratic Republic of the Congo")
-
-        let prcConversion = ConversionEngine.result(for: "time prc")
-        XCTAssertEqual(prcConversion?.inputLabel, "China")
     }
 
     func testSystemPreferencesScannerBenchmark() {

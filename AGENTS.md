@@ -26,6 +26,7 @@ This repository is a macOS SwiftUI/AppKit launcher organized into a clean `Sourc
   - `PerformanceBenchmarkTests.swift` contains the throughput and memory benchmark regression suite.
 - `Tests/Features/Calculator/`:
   - `CalculatorExpressionTests.swift` contains the calculator parser and `ConversionEngine` regression suite.
+  - `TimeZoneDateTimeTests.swift` contains regression tests for time zone resolution, country labels, and date & time calculations.
 - `docs/`:
   - `BENCHMARKS.md` contains historical benchmark records, reproduction commands, and memory profiles.
   - Audit and technical specification reports.
