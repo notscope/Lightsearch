@@ -12,14 +12,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		B04256BB30482FC3007BC183 /* Lightsearch */ = {
+		B04256BB30482FC3007BC183 /* Sources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Lightsearch;
+			path = Sources;
 			sourceTree = "<group>";
 		};
-		66972A193D6C4AF8A17E21F3A08B9D23 /* LightsearchTests */ = {
+		66972A193D6C4AF8A17E21F3A08B9D23 /* Tests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = LightsearchTests;
+			path = Tests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -55,7 +55,8 @@
 		B04256B030482FC3007BC183 = {
 			isa = PBXGroup;
 			children = (
-				B04256BB30482FC3007BC183 /* Lightsearch */,
+				B04256BB30482FC3007BC183 /* Sources */,
+				66972A193D6C4AF8A17E21F3A08B9D23 /* Tests */,
 				B04256BA30482FC3007BC183 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -93,7 +94,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				B04256BB30482FC3007BC183 /* Lightsearch */,
+				B04256BB30482FC3007BC183 /* Sources */,
 			);
 			name = Lightsearch;
 			packageProductDependencies = (
@@ -116,7 +117,7 @@
 				3D365E56E08743B8A56B2FCE8EB97936 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				66972A193D6C4AF8A17E21F3A08B9D23 /* LightsearchTests */,
+				66972A193D6C4AF8A17E21F3A08B9D23 /* Tests */,
 			);
 			name = LightsearchTests;
 			packageProductDependencies = (

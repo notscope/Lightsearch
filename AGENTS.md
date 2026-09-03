@@ -2,20 +2,28 @@
 
 ## Project Structure & Module Organization
 
-This repository is a small macOS SwiftUI/AppKit launcher. Production code lives in `Lightsearch/`:
+This repository is a macOS SwiftUI/AppKit launcher organized into a clean `Sources/` and `Tests/` hierarchy:
 
-- `LightsearchApp.swift` configures the menu-bar application and tray behavior.
-- `LauncherController.swift` owns the `NSPanel`, keyboard monitoring, sizing, and app/file launching.
-- `ApplicationSearch.swift` is the core application catalog, ranking, launch history, and app scanner.
-- `LauncherState.swift` owns core query/selection state and delegates optional work to the feature registry.
-- `LauncherResult.swift` contains the shared result/page boundary used by the core and extensions.
-- `LauncherFeatures.swift` is the only feature registry; its short enabled-feature list is the removal point for optional features.
-- `CalculatorFeature.swift` adapts calculator, date/time, and time-zone behavior; `CalculatorExpression.swift`, `Conversion.swift`, `TimeZoneResolver.swift`, and `ConversionUnits*.swift` are its implementation files.
-- `ContentView.swift` contains the launcher UI and reusable result-row views.
-- `FileSearch.swift` contains the optional Spotlight file-search feature and recent-file persistence.
-- `SystemPreferences.swift` contains the optional Apple Settings discovery, search, and URL feature.
-- `LightsearchTests/CalculatorExpressionTests.swift` contains the calculator parser and `ConversionEngine` regression suite.
-- `Assets.xcassets/` contains the app icon and color assets.
+- `Sources/App/`:
+  - `LightsearchApp.swift` configures the menu-bar application, lifecycle, and tray behavior.
+- `Sources/Core/`:
+  - `Launcher/`:
+    - `LauncherController.swift` owns the `NSPanel`, keyboard monitoring, sizing, and app/file launching.
+    - `LauncherState.swift` owns core query/selection state and delegates optional work to the feature registry.
+    - `LauncherResult.swift` contains the shared result/page boundary used by the core and extensions.
+    - `LauncherFeatures.swift` is the only feature registry; its short enabled-feature list is the removal point for optional features.
+  - `ApplicationSearch/`:
+    - `ApplicationSearch.swift` is the core application catalog, ranking, launch history, and app scanner.
+- `Sources/Features/`:
+  - `Calculator/`: `CalculatorFeature.swift` adapts calculator, date/time, and time-zone behavior; `CalculatorExpression.swift`, `Conversion.swift`, `TimeZoneResolver.swift`, and `ConversionUnits*.swift` are its implementation files.
+  - `FileSearch/`: `FileSearch.swift` contains the Spotlight file-search feature and recent-file persistence.
+  - `SystemPreferences/`: `SystemPreferences.swift` contains the Apple Settings discovery, search, and URL feature.
+- `Sources/UI/`:
+  - `ContentView.swift` contains the launcher UI and reusable result-row views.
+- `Sources/Resources/`:
+  - `Assets.xcassets/` contains the app icon and color assets.
+- `Tests/Features/Calculator/`:
+  - `CalculatorExpressionTests.swift` contains the calculator parser and `ConversionEngine` regression suite.
 
 The Xcode project is `Lightsearch.xcodeproj`, with the `LightsearchTests` XCTest target.
 
