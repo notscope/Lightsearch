@@ -6,10 +6,14 @@ This repository is a small macOS SwiftUI/AppKit launcher. Production code lives 
 
 - `LightsearchApp.swift` configures the menu-bar application and tray behavior.
 - `LauncherController.swift` owns the `NSPanel`, keyboard monitoring, sizing, and app/file launching.
-- `LauncherState.swift` contains application models, ranking, launch history, and selection state.
+- `ApplicationSearch.swift` is the core application catalog, ranking, launch history, and app scanner.
+- `LauncherState.swift` owns core query/selection state and delegates optional work to the feature registry.
+- `LauncherResult.swift` contains the shared result/page boundary used by the core and extensions.
+- `LauncherFeatures.swift` is the only feature registry; its short enabled-feature list is the removal point for optional features.
+- `CalculatorFeature.swift` adapts calculator, date/time, and time-zone behavior; `Conversion.swift`, `TimeZoneResolver.swift`, and `ConversionUnits*.swift` are its implementation files.
 - `ContentView.swift` contains the launcher UI and reusable result-row views.
-- `FileSearch.swift` contains Spotlight file search and recent-file persistence.
-- `SystemPreferences.swift` discovers Apple Settings extensions, localized search terms, and URLs.
+- `FileSearch.swift` contains the optional Spotlight file-search feature and recent-file persistence.
+- `SystemPreferences.swift` contains the optional Apple Settings discovery, search, and URL feature.
 - `Assets.xcassets/` contains the app icon and color assets.
 
 The Xcode project is `Lightsearch.xcodeproj`. There is currently no test target.
@@ -24,6 +28,10 @@ git diff --check
 ```
 
 The first command compiles the app. Run `./relaunch.sh` only after changes that touch Swift/source code and require the rebuilt app to be refreshed; Markdown-only documentation edits do not require a relaunch. The script builds the configured Release product, quits any running Lightsearch instance, and launches the rebuilt app. It uses the default automatic code-signing configuration. `git diff --check` catches whitespace errors.
+
+## Optional Feature Architecture
+
+Application search is the product core. Calculator, file search, and System Settings are `LauncherSearchFeature` implementations registered in `LauncherFeatures.swift`. Each feature owns its parser/scanner, loading, cancellation, and result ranking. To disable one, remove its line from `enabledFeatures`; remove its source files only after the corresponding UI/result case is no longer needed. Keep core application ranking independent of optional features.
 
 ## Coding Style & Naming Conventions
 

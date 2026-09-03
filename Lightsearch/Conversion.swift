@@ -2,6 +2,8 @@
 //  Conversion.swift
 //  Lightsearch
 //
+// Optional calculator feature implementation. Keep calculator-specific
+// parsing and evaluation out of the application-search core.
 
 import Foundation
 import Darwin

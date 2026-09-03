@@ -2,6 +2,7 @@
 //  FileSearch.swift
 //  Lightsearch
 //
+// Optional file-search feature implementation.
 
 import Foundation
 
@@ -182,5 +183,135 @@ final class FileSearchService: NSObject {
             }
             return lhs.path < rhs.path
         }
+    }
+}
+
+@MainActor
+final class FileSearchFeature: LauncherSearchFeature, LauncherPageFeature {
+    let identifier = "file-search"
+    var onChange: (() -> Void)?
+
+    let page: LauncherPage = .files
+    private(set) var isActive = false
+    private(set) var fileResults: [SearchFile] = []
+    private(set) var isLoading = false
+
+    private let fileSearchService = FileSearchService()
+    private let recentFileHistory = RecentFileHistory()
+    private let maximumResults = 50
+    private var currentQuery = ""
+    private var searchTask: Task<Void, Never>?
+
+    var visibleFileResults: [SearchFile] {
+        currentQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? recentFiles
+            : fileResults
+    }
+
+    var recentFiles: [SearchFile] {
+        recentFileHistory.recentFiles()
+    }
+
+    var resultCountLabel: String {
+        let count = fileResults.count
+        if count >= maximumResults {
+            return "\(maximumResults)+ files"
+        }
+        return "\(count) \(count == 1 ? "file" : "files")"
+    }
+
+    func searchResults(for context: LauncherSearchContext) -> LauncherFeatureSearchOutput {
+        let searchQuery = context.applicationQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !searchQuery.isEmpty else {
+            return LauncherFeatureSearchOutput(
+                results: [],
+                placement: .afterApplications
+            )
+        }
+
+        let application = InstalledApplication(
+            id: fileSearchActionID,
+            name: "File Search",
+            bundleIdentifier: "Search files and folders",
+            path: ""
+        )
+        let matches = ApplicationSearch.rankedResults(
+            [application],
+            query: searchQuery
+        )
+
+        return LauncherFeatureSearchOutput(
+            results: matches.isEmpty ? [] : [.fileSearch],
+            placement: .afterApplications
+        )
+    }
+
+    func queryChanged(_ query: String, page: LauncherPage) {
+        currentQuery = query
+        guard isActive, page == .files else {
+            stopSearch()
+            return
+        }
+        scheduleSearch()
+    }
+
+    func enter() {
+        isActive = true
+        stopSearch()
+        currentQuery = ""
+        fileResults = []
+    }
+
+    func exit() {
+        isActive = false
+        stopSearch()
+        currentQuery = ""
+        fileResults = []
+    }
+
+    func recordOpen(of file: SearchFile) {
+        recentFileHistory.record(path: file.path)
+    }
+
+    func stop() {
+        stopSearch()
+    }
+
+    private func scheduleSearch() {
+        stopSearch()
+        fileResults = []
+
+        let searchText = currentQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !searchText.isEmpty else { return }
+
+        isLoading = true
+        searchTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: 120_000_000)
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled, let self else { return }
+            self.fileSearchService.search(for: searchText) { [weak self] results in
+                guard let self,
+                      self.isActive,
+                      self.currentQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+                          == searchText else {
+                    return
+                }
+
+                self.fileResults = Array(results.prefix(self.maximumResults))
+                self.isLoading = false
+                self.onChange?()
+            }
+        }
+    }
+
+    private func stopSearch() {
+        searchTask?.cancel()
+        searchTask = nil
+        fileSearchService.stop()
+        isLoading = false
     }
 }

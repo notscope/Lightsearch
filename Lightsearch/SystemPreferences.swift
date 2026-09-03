@@ -2,6 +2,7 @@
 //  SystemPreferences.swift
 //  Lightsearch
 //
+// Optional System Settings feature implementation.
 
 import Foundation
 
@@ -337,5 +338,49 @@ enum SystemPreferenceSearch {
             return token
         }
         return String(token.dropLast())
+    }
+}
+
+@MainActor
+final class SystemPreferencesFeature: LauncherSearchFeature {
+    let identifier = "system-preferences"
+    var onChange: (() -> Void)?
+
+    private let maximumResults = 20
+    private let maximumDefaultResults = 1
+    private var preferences: [SystemPreference] = []
+
+    func load() async {
+        let scannedPreferences = await Task.detached(priority: .utility) {
+            SystemPreferencesScanner.scan()
+        }.value
+
+        guard !Task.isCancelled else { return }
+        preferences = scannedPreferences
+        onChange?()
+    }
+
+    func applicationQuery(for query: String) -> String {
+        SystemPreferenceSearch.intent(for: query).query
+    }
+
+    func searchResults(for context: LauncherSearchContext) -> LauncherFeatureSearchOutput {
+        let intent = SystemPreferenceSearch.intent(for: context.query)
+        let rankedPreferences = SystemPreferenceSearch.rankedResults(
+            preferences,
+            query: context.applicationQuery,
+            includeSubitems: intent.isExplicit
+        )
+        let limit = intent.isExplicit ? maximumResults : maximumDefaultResults
+        let results = rankedPreferences
+            .prefix(limit)
+            .map { LauncherResult.systemPreference($0) }
+
+        return LauncherFeatureSearchOutput(
+            results: Array(results),
+            placement: intent.isExplicit
+                ? .beforeApplications
+                : .afterApplications
+        )
     }
 }

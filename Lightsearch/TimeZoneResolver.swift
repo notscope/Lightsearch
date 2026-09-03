@@ -2,6 +2,7 @@
 //  TimeZoneResolver.swift
 //  Lightsearch
 //
+// Optional calculator/date-time feature implementation.
 
 import MapKit
 
