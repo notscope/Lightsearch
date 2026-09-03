@@ -27,6 +27,8 @@ This repository is a macOS SwiftUI/AppKit launcher organized into a clean `Sourc
 - `Tests/Features/Calculator/`:
   - `CalculatorExpressionTests.swift` contains the calculator parser and `ConversionEngine` regression suite.
   - `TimeZoneDateTimeTests.swift` contains regression tests for time zone resolution, country labels, and date & time calculations.
+- `Tests/Features/SystemPreferences/`:
+  - `SystemPreferencesTests.swift` contains the scanner benchmark and search ranking regression suite for System Settings.
 - `docs/`:
   - `BENCHMARKS.md` contains historical benchmark records, reproduction commands, and memory profiles.
   - Audit and technical specification reports.

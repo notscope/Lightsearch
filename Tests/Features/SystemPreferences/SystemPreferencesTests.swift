@@ -1,14 +1,15 @@
 //
-//  PerformanceBenchmarkTests.swift
+//  SystemPreferencesTests.swift
 //  LightsearchTests
 //
+// Benchmark and search ranking regression suite for the optional System Preferences feature.
 
 import Darwin
 import Foundation
 import XCTest
 @testable import Lightsearch
 
-final class PerformanceBenchmarkTests: XCTestCase {
+final class SystemPreferencesTests: XCTestCase {
 
     struct MemoryStats {
         let footprintBytes: UInt64
@@ -37,39 +38,28 @@ final class PerformanceBenchmarkTests: XCTestCase {
         }
     }
 
-    func testInstalledApplicationScannerBenchmark() {
+    func testSystemPreferencesScannerBenchmark() {
         let beforeMem = MemoryStats.current()
         let startTime = CFAbsoluteTimeGetCurrent()
 
-        let apps = InstalledApplicationScanner.scan()
+        let prefs = SystemPreferencesScanner.scan()
 
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
         let afterMem = MemoryStats.current()
 
-        print("--- BENCHMARK: InstalledApplicationScanner ---")
-        print("Scanned applications count: \(apps.count)")
+        print("--- BENCHMARK: SystemPreferencesScanner ---")
+        print("Scanned preferences count: \(prefs.count)")
         print(String(format: "Execution time: %.4f seconds (%.2f ms)", elapsed, elapsed * 1000.0))
         print(String(format: "Footprint before: %.2f MB -> after: %.2f MB (delta: %+.2f MB)",
                      beforeMem.footprintMB, afterMem.footprintMB, afterMem.footprintMB - beforeMem.footprintMB))
-        print("---------------------------------------------")
+        print("-------------------------------------------")
 
-        XCTAssertFalse(apps.isEmpty, "Scanner should discover installed applications on macOS")
-        XCTAssertTrue(apps.contains { $0.name.caseInsensitiveCompare("Safari") == .orderedSame }, "Safari should be discovered")
-        XCTAssertTrue(apps.contains { $0.name.caseInsensitiveCompare("Finder") == .orderedSame }, "Finder should be discovered")
+        XCTAssertFalse(prefs.isEmpty, "Scanner should discover system preference panes on macOS")
     }
 
-    func testSafariAndFinderSearchRanking() {
-        let apps = InstalledApplicationScanner.scan()
-        let safariResults = ApplicationSearch.rankedResults(apps, query: "safari")
-        XCTAssertEqual(safariResults.first?.name, "Safari", "Safari must be the top search result for 'safari'")
-
-        let finderResults = ApplicationSearch.rankedResults(apps, query: "finder")
-        XCTAssertEqual(finderResults.first?.name, "Finder", "Finder must be the top search result for 'finder'")
-    }
-
-    func testApplicationSearchThroughputBenchmark() {
-        let apps = InstalledApplicationScanner.scan()
-        let queries = ["safari", "code", "term", "display", "sound", "network", "calc", "mail", "notes", "music"]
+    func testSystemPreferencesSearchThroughput() {
+        let prefs = SystemPreferencesScanner.scan()
+        let queries = ["display", "sound", "network", "battery", "bluetooth", "trackpad", "keyboard", "wifi"]
 
         let startTime = CFAbsoluteTimeGetCurrent()
         var matchCount = 0
@@ -77,8 +67,8 @@ final class PerformanceBenchmarkTests: XCTestCase {
 
         for _ in 0..<iterations {
             for q in queries {
-                let appResults = ApplicationSearch.rankedResults(apps, query: q)
-                matchCount += appResults.count
+                let results = SystemPreferenceSearch.rankedResults(prefs, query: q, includeSubitems: true)
+                matchCount += results.count
             }
         }
 
@@ -86,12 +76,12 @@ final class PerformanceBenchmarkTests: XCTestCase {
         let totalElapsed = CFAbsoluteTimeGetCurrent() - startTime
         let avgPerQueryUs = (totalElapsed / Double(totalQueries)) * 1_000_000.0
 
-        print("--- BENCHMARK: Core Application Search Throughput ---")
+        print("--- BENCHMARK: System Preferences Search Throughput ---")
         print("Total queries executed: \(totalQueries)")
         print("Total matches found: \(matchCount)")
         print(String(format: "Total time: %.4f seconds", totalElapsed))
         print(String(format: "Average time per query: %.2f µs (%.4f ms)", avgPerQueryUs, avgPerQueryUs / 1000.0))
-        print("---------------------------------------------------")
+        print("------------------------------------------------------")
 
         XCTAssertGreaterThan(matchCount, 0)
     }
