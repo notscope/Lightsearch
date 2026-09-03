@@ -10,6 +10,49 @@ struct InstalledApplication: Identifiable, Hashable, Sendable {
     let name: String
     let bundleIdentifier: String?
     let path: String
+    let normalizedName: String
+    let nameTokens: [String]
+    let acronym: String
+    let normalizedBundleIdentifier: String?
+    let bundleTokens: [String]
+    let bundleAcronym: String?
+
+    init(
+        id: String,
+        name: String,
+        bundleIdentifier: String?,
+        path: String
+    ) {
+        self.id = id
+        self.name = name
+        self.bundleIdentifier = bundleIdentifier
+        self.path = path
+
+        let normName = ApplicationSearch.normalize(name)
+        self.normalizedName = normName
+        let nTokens = ApplicationSearch.tokens(from: name)
+        self.nameTokens = nTokens
+        self.acronym = nTokens.compactMap(\.first).map(String.init).joined()
+
+        if let bundleIdentifier {
+            self.normalizedBundleIdentifier = ApplicationSearch.normalize(bundleIdentifier)
+            let bTokens = ApplicationSearch.tokens(from: bundleIdentifier)
+            self.bundleTokens = bTokens
+            self.bundleAcronym = bTokens.compactMap(\.first).map(String.init).joined()
+        } else {
+            self.normalizedBundleIdentifier = nil
+            self.bundleTokens = []
+            self.bundleAcronym = nil
+        }
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: InstalledApplication, rhs: InstalledApplication) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 struct ApplicationLaunchUsage: Codable {
@@ -82,6 +125,7 @@ enum ApplicationSearch {
         guard !normalizedQuery.isEmpty else { return applications }
 
         let queryTokens = tokens(from: query)
+        let queryCharacters = Array(normalizedQuery)
         let now = Date()
 
         return applications
@@ -89,7 +133,8 @@ enum ApplicationSearch {
                 guard let matchScore = score(
                     for: application,
                     normalizedQuery: normalizedQuery,
-                    queryTokens: queryTokens
+                    queryTokens: queryTokens,
+                    queryCharacters: queryCharacters
                 ) else {
                     return nil
                 }
@@ -121,29 +166,31 @@ enum ApplicationSearch {
     private static func score(
         for application: InstalledApplication,
         normalizedQuery: String,
-        queryTokens: [String]
+        queryTokens: [String],
+        queryCharacters: [Character]
     ) -> Double? {
-        let name = normalize(application.name)
-        let nameTokens = tokens(from: application.name)
         var fieldScores: [Double] = []
 
         if let nameScore = fieldScore(
             query: normalizedQuery,
             queryTokens: queryTokens,
-            field: name,
-            fieldTokens: nameTokens
+            queryCharacters: queryCharacters,
+            field: application.normalizedName,
+            fieldTokens: application.nameTokens,
+            acronym: application.acronym
         ) {
             fieldScores.append(nameScore)
         }
 
-        if let bundleIdentifier = application.bundleIdentifier {
-            let bundle = normalize(bundleIdentifier)
-            let bundleTokens = tokens(from: bundleIdentifier)
+        if let normalizedBundle = application.normalizedBundleIdentifier,
+           let bundleAcronym = application.bundleAcronym {
             if let bundleScore = fieldScore(
                 query: normalizedQuery,
                 queryTokens: queryTokens,
-                field: bundle,
-                fieldTokens: bundleTokens
+                queryCharacters: queryCharacters,
+                field: normalizedBundle,
+                fieldTokens: application.bundleTokens,
+                acronym: bundleAcronym
             ) {
                 // Bundle identifiers are useful fallback metadata, but a name
                 // match should normally remain more important.
@@ -157,8 +204,10 @@ enum ApplicationSearch {
     private static func fieldScore(
         query: String,
         queryTokens: [String],
+        queryCharacters: [Character],
         field: String,
-        fieldTokens: [String]
+        fieldTokens: [String],
+        acronym: String
     ) -> Double? {
         guard !field.isEmpty else { return nil }
 
@@ -183,7 +232,6 @@ enum ApplicationSearch {
             return tokenScore
         }
 
-        let acronym = fieldTokens.compactMap(\.first).map(String.init).joined()
         if acronym.hasPrefix(query) {
             return 760 + prefixCoverage(query: query, field: acronym) * 20
         }
@@ -192,7 +240,7 @@ enum ApplicationSearch {
             return 640 + prefixCoverage(query: query, field: field) * 20
         }
 
-        if let fuzzyScore = subsequenceScore(query: query, field: field) {
+        if let fuzzyScore = subsequenceScore(queryCharacters: queryCharacters, in: field) {
             return 500 + fuzzyScore * 100
         }
 
@@ -219,36 +267,33 @@ enum ApplicationSearch {
         return 760 + averageCoverage * 30
     }
 
-    private static func subsequenceScore(query: String, field: String) -> Double? {
-        let queryCharacters = Array(query)
-        let fieldCharacters = Array(field)
-        guard !queryCharacters.isEmpty, !fieldCharacters.isEmpty else { return nil }
+    private static func subsequenceScore(queryCharacters: [Character], in field: String) -> Double? {
+        guard !queryCharacters.isEmpty, !field.isEmpty else { return nil }
 
-        var searchStart = 0
+        var searchStart = field.startIndex
         var firstMatchIndex: Int?
         var previousMatchIndex: Int?
         var totalGap = 0
 
         for queryCharacter in queryCharacters {
-            guard searchStart < fieldCharacters.count,
-                  let matchIndex = fieldCharacters[searchStart...].firstIndex(
-                      of: queryCharacter
-                  ) else {
+            guard searchStart < field.endIndex,
+                  let matchIndex = field[searchStart...].firstIndex(of: queryCharacter) else {
                 return nil
             }
 
+            let intOffset = field.distance(from: field.startIndex, to: matchIndex)
             if firstMatchIndex == nil {
-                firstMatchIndex = matchIndex
+                firstMatchIndex = intOffset
             }
             if let previousMatchIndex {
-                totalGap += matchIndex - previousMatchIndex - 1
+                totalGap += intOffset - previousMatchIndex - 1
             }
 
-            previousMatchIndex = matchIndex
-            searchStart = matchIndex + 1
+            previousMatchIndex = intOffset
+            searchStart = field.index(after: matchIndex)
         }
 
-        let coverage = Double(queryCharacters.count) / Double(fieldCharacters.count)
+        let coverage = Double(queryCharacters.count) / Double(field.count)
         let compactness = 1 / (1 + Double(totalGap))
         let startBonus = firstMatchIndex == 0 ? 0.15 : 0
         return min(1, coverage * 0.45 + compactness * 0.4 + startBonus)
@@ -259,7 +304,7 @@ enum ApplicationSearch {
         return min(Double(query.count) / Double(field.count), 1)
     }
 
-    private static func tokens(from value: String) -> [String] {
+    nonisolated static func tokens(from value: String) -> [String] {
         var separated = ""
         var previousCharacterWasLowercase = false
 
@@ -281,7 +326,7 @@ enum ApplicationSearch {
             .map { normalize(String($0)) }
     }
 
-    private static func normalize(_ value: String) -> String {
+    nonisolated static func normalize(_ value: String) -> String {
         value
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .folding(

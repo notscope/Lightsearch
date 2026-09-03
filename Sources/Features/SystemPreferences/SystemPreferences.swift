@@ -14,6 +14,17 @@ struct SystemPreference: Identifiable, Hashable, Sendable {
     let urlString: String
     let searchableTokens: [String]
     let isSubitem: Bool
+    let titleTokens: [String]
+    let titleText: String
+    let compactTitle: String
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: SystemPreference, rhs: SystemPreference) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 enum SystemPreferencesScanner {
@@ -81,8 +92,10 @@ enum SystemPreferencesScanner {
 
         let entries = loadSearchEntries(from: searchTermsPath)
         let iconPath = extensionURL.path
-        let parentTokens = SystemPreferenceSearch.tokens(from: parentTitle)
-        var parentSearchTokens = parentTokens
+        let parentTitleTokens = SystemPreferenceSearch.tokens(from: parentTitle)
+        let parentTitleText = parentTitleTokens.joined(separator: " ")
+        let parentCompactTitle = parentTitleTokens.joined()
+        var parentSearchTokens = parentTitleTokens
         for entry in entries {
             parentSearchTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.title))
             parentSearchTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.index))
@@ -95,12 +108,19 @@ enum SystemPreferencesScanner {
             iconPath: iconPath,
             urlString: makeURLString(bundleIdentifier: bundleIdentifier),
             searchableTokens: parentSearchTokens,
-            isSubitem: false
+            isSubitem: false,
+            titleTokens: parentTitleTokens,
+            titleText: parentTitleText,
+            compactTitle: parentCompactTitle
         )
 
         let children = entries.enumerated().map { index, entry in
-            var childTokens = parentTokens
-            childTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.title))
+            let childTitleTokens = SystemPreferenceSearch.tokens(from: entry.title)
+            let childTitleText = childTitleTokens.joined(separator: " ")
+            let childCompactTitle = childTitleTokens.joined()
+
+            var childTokens = parentTitleTokens
+            childTokens.append(contentsOf: childTitleTokens)
             childTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.index))
             return SystemPreference(
                 id: "\(bundleIdentifier)#\(entry.sectionKey)#\(index)",
@@ -112,7 +132,10 @@ enum SystemPreferencesScanner {
                     sectionKey: entry.sectionKey
                 ),
                 searchableTokens: childTokens,
-                isSubitem: true
+                isSubitem: true,
+                titleTokens: childTitleTokens,
+                titleText: childTitleText,
+                compactTitle: childCompactTitle
             )
         }
 
@@ -228,13 +251,17 @@ enum SystemPreferenceSearch {
             ? preferences
             : preferences.filter { !$0.isSubitem }
         let queryText = queryTokens.joined(separator: " ")
+        let compactQuery = queryTokens.joined()
+        let queryLength = queryTokens.reduce(0) { $0 + $1.count }
 
         return candidates
             .compactMap { preference -> ScoredPreference? in
                 guard let score = score(
                     for: preference,
                     queryTokens: queryTokens,
-                    queryText: queryText
+                    queryText: queryText,
+                    compactQuery: compactQuery,
+                    queryLength: queryLength
                 ) else {
                     return nil
                 }
@@ -261,27 +288,24 @@ enum SystemPreferenceSearch {
     private static func score(
         for preference: SystemPreference,
         queryTokens: [String],
-        queryText: String
+        queryText: String,
+        compactQuery: String,
+        queryLength: Int
     ) -> Double? {
-        let titleTokens = tokens(from: preference.title)
-        let titleText = titleTokens.joined(separator: " ")
-        let compactTitle = titleTokens.joined()
-        let compactQuery = queryTokens.joined()
-
-        if titleText == queryText || compactTitle == compactQuery {
+        if preference.titleText == queryText || preference.compactTitle == compactQuery {
             return 1_000
         }
 
-        if titleText.hasPrefix(queryText) || compactTitle.hasPrefix(compactQuery) {
-            return 900 + coverage(queryTokens, in: titleTokens) * 30
+        if preference.titleText.hasPrefix(queryText) || preference.compactTitle.hasPrefix(compactQuery) {
+            return 900 + coverage(queryLength: queryLength, in: preference.titleTokens) * 30
         }
 
-        if queryTokens.count == 1, titleTokens.contains(queryTokens[0]) {
+        if queryTokens.count == 1, preference.titleTokens.contains(queryTokens[0]) {
             return 850
         }
 
         if queryTokens.count > 1,
-           let titleScore = tokenMatchScore(queryTokens, in: titleTokens) {
+           let titleScore = tokenMatchScore(queryTokens, in: preference.titleTokens) {
             return titleScore
         }
 
@@ -315,10 +339,10 @@ enum SystemPreferenceSearch {
         return 760 + averageCoverage * 30
     }
 
-    private static func coverage(_ queryTokens: [String], in fieldTokens: [String]) -> Double {
+    private static func coverage(queryLength: Int, in fieldTokens: [String]) -> Double {
         guard !fieldTokens.isEmpty else { return 0 }
-        let queryLength = queryTokens.joined().count
-        let fieldLength = fieldTokens.joined().count
+        let fieldLength = fieldTokens.reduce(0) { $0 + $1.count }
+        guard fieldLength > 0 else { return 0 }
         return min(Double(queryLength) / Double(fieldLength), 1)
     }
 

@@ -15,9 +15,6 @@ final class LauncherState: ObservableObject {
         didSet {
             selectedIndex = 0
             features.queryChanged(query, page: page)
-            if page == .applications {
-                rememberNonEmptyResults()
-            }
         }
     }
 
@@ -100,7 +97,6 @@ final class LauncherState: ObservableObject {
             self.previousResults = loadedApplications
             self.isLoading = false
             self.selectedIndex = 0
-            self.rememberNonEmptyResults()
         }
     }
 
@@ -155,13 +151,6 @@ final class LauncherState: ObservableObject {
         selectedIndex = 0
     }
 
-    private func rememberNonEmptyResults() {
-        let matches = filteredApplications
-        if !matches.isEmpty {
-            previousResults = matches
-        }
-    }
-
     private var displayedResults: [LauncherResult] {
         var results = filteredLauncherResults
         guard results.count < LauncherMetrics.visibleEntryCount, !applications.isEmpty else {
@@ -188,9 +177,11 @@ final class LauncherState: ObservableObject {
             query: featureResults.applicationQuery,
             history: launchHistory
         )
-        let applicationResults = rankedApplications
-            .prefix(maximumApplicationResults)
-            .map { LauncherResult.application($0) }
+        let applicationMatches = Array(rankedApplications.prefix(maximumApplicationResults))
+        if page == .applications && !applicationMatches.isEmpty {
+            previousResults = applicationMatches
+        }
+        let applicationResults = applicationMatches.map { LauncherResult.application($0) }
 
         return featureResults.leading
             + applicationResults
