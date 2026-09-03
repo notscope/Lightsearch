@@ -450,11 +450,11 @@ private struct RecentFileCard: View {
                 HStack(spacing: 7) {
                     Image(systemName: "return")
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
 
                     Image(systemName: "arrow.up.right")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                 }
             }
         }
@@ -501,13 +501,12 @@ private struct SearchResultRow<Icon: View>: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.title3.weight(.medium))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(isSelected ? .white : .primary)
                     .lineLimit(1)
 
                 Text(subtitle)
                     .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                    .opacity(isSelected ? 0.85 : 1.0)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
                     .lineLimit(1)
             }
 
@@ -517,11 +516,11 @@ private struct SearchResultRow<Icon: View>: View {
                 HStack(spacing: 7) {
                     Image(systemName: "return")
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
 
                     Image(systemName: "arrow.up.right")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                         .transition(.opacity)
                 }
             }
@@ -627,17 +626,27 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
     }
 }
 
-private extension View {
-    @ViewBuilder
-    func lightsearchGlass(cornerRadius: CGFloat) -> some View {
-        if #available(macOS 26.0, *) {
-            glassEffect(
-                .regular,
+private struct ThemedGlassBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let cornerRadius: CGFloat
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                colorScheme == .dark
+                    ? Color(nsColor: .windowBackgroundColor).opacity(0.88)
+                    : Color(nsColor: .windowBackgroundColor).opacity(0.85)
+            )
+            .background(
+                .ultraThinMaterial,
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
-        } else {
-            background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        }
+    }
+}
+
+private extension View {
+    func lightsearchGlass(cornerRadius: CGFloat) -> some View {
+        background(ThemedGlassBackground(cornerRadius: cornerRadius))
     }
 }
 
