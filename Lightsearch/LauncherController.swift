@@ -40,7 +40,9 @@ final class LauncherController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
-        panel.appearance = NSApp.effectiveAppearance
+        // Inherit the app's effective appearance so Liquid Glass follows the
+        // user's System Settings theme instead of the desktop behind the panel.
+        panel.appearanceSource = NSApp
 
         let hostingView = NSHostingView(
             rootView: ContentView(
@@ -102,7 +104,6 @@ final class LauncherController: NSObject, NSWindowDelegate {
     func show() {
         state.loadIfNeeded()
         state.resetForPresentation()
-        panel.appearance = NSApp.effectiveAppearance
         updatePanelSize(isExpanded: false)
         positionPanel()
 

@@ -80,8 +80,7 @@ struct ContentView: View {
             width: LauncherMetrics.panelWidth,
             height: showsExpandedContent ? LauncherMetrics.expandedHeight : LauncherMetrics.collapsedHeight
         )
-        .foregroundStyle(.primary)
-        .lightsearchGlass(cornerRadius: LauncherMetrics.cornerRadius)
+        .systemThemedSurface(cornerRadius: LauncherMetrics.cornerRadius)
         .clipShape(RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous)
@@ -92,11 +91,6 @@ struct ContentView: View {
             state.isFileSearchPage
                 ? "Lightsearch file search"
                 : "Lightsearch application launcher"
-        )
-        .preferredColorScheme(
-            (NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) ?? .aqua) == .darkAqua
-                ? .dark
-                : .light
         )
         .onChange(of: state.query) { _, newQuery in
             let hasQuery = !newQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -138,7 +132,7 @@ struct ContentView: View {
                     : "Search for apps and commands...",
                 onViewCreated: onSearchFieldReady
             )
-            .frame(height: 26)
+            .frame(height: 30)
 
             if state.isFileSearchPage {
                 if !state.query.isEmpty {
@@ -455,11 +449,11 @@ private struct RecentFileCard: View {
                 HStack(spacing: 7) {
                     Image(systemName: "return")
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
 
                     Image(systemName: "arrow.up.right")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                 }
             }
         }
@@ -506,12 +500,13 @@ private struct SearchResultRow<Icon: View>: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.title3.weight(.medium))
-                    .foregroundStyle(isSelected ? .white : .primary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Text(subtitle)
                     .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .opacity(isSelected ? 0.85 : 1.0)
                     .lineLimit(1)
             }
 
@@ -521,11 +516,11 @@ private struct SearchResultRow<Icon: View>: View {
                 HStack(spacing: 7) {
                     Image(systemName: "return")
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
 
                     Image(systemName: "arrow.up.right")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .transition(.opacity)
                 }
             }
@@ -577,7 +572,6 @@ private struct WorkspaceIconView: View {
 }
 
 private struct SearchFieldRepresentable: NSViewRepresentable {
-    @Environment(\.colorScheme) private var colorScheme
     @Binding var text: String
 
     let placeholder: String
@@ -590,10 +584,11 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
     func makeNSView(context: Context) -> NSSearchField {
         let searchField = NSSearchField()
         searchField.delegate = context.coordinator
+        searchField.placeholderString = placeholder
         searchField.isBordered = false
         searchField.drawsBackground = false
         searchField.focusRingType = .none
-        searchField.font = .preferredFont(forTextStyle: .title3)
+        searchField.font = .preferredFont(forTextStyle: .title2)
         searchField.controlSize = .large
         searchField.cell?.lineBreakMode = .byTruncatingTail
         if let searchCell = searchField.cell as? NSSearchFieldCell {
@@ -603,31 +598,16 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
             searchCell.searchButtonCell = nil
             searchCell.cancelButtonCell = nil
         }
-        applyAppearance(to: searchField)
         onViewCreated(searchField)
         return searchField
     }
 
     func updateNSView(_ searchField: NSSearchField, context: Context) {
         context.coordinator.parent = self
-        applyAppearance(to: searchField)
+        searchField.placeholderString = placeholder
         if searchField.stringValue != text {
             searchField.stringValue = text
         }
-    }
-
-    private func applyAppearance(to searchField: NSSearchField) {
-        let isDark = (NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) ?? .aqua) == .darkAqua
-        searchField.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
-        searchField.textColor = isDark ? .white : .black
-        let font = searchField.font ?? .preferredFont(forTextStyle: .title3)
-        searchField.placeholderAttributedString = NSAttributedString(
-            string: placeholder,
-            attributes: [
-                .foregroundColor: isDark ? NSColor.white.withAlphaComponent(0.55) : NSColor.black.withAlphaComponent(0.55),
-                .font: font
-            ]
-        )
     }
 
     final class Coordinator: NSObject, NSSearchFieldDelegate {
@@ -647,9 +627,9 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
 }
 
 private extension View {
-    func lightsearchGlass(cornerRadius: CGFloat) -> some View {
-        glassEffect(
-            .regular.tint(Color(nsColor: .windowBackgroundColor).opacity(0.85)),
+    func systemThemedSurface(cornerRadius: CGFloat) -> some View {
+        background(
+            .thickMaterial,
             in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         )
     }
