@@ -572,6 +572,7 @@ private struct WorkspaceIconView: View {
 }
 
 private struct SearchFieldRepresentable: NSViewRepresentable {
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var text: String
 
     let placeholder: String
@@ -584,7 +585,6 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
     func makeNSView(context: Context) -> NSSearchField {
         let searchField = NSSearchField()
         searchField.delegate = context.coordinator
-        searchField.placeholderString = placeholder
         searchField.isBordered = false
         searchField.drawsBackground = false
         searchField.focusRingType = .none
@@ -598,16 +598,30 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
             searchCell.searchButtonCell = nil
             searchCell.cancelButtonCell = nil
         }
+        applyAppearance(to: searchField)
         onViewCreated(searchField)
         return searchField
     }
 
     func updateNSView(_ searchField: NSSearchField, context: Context) {
         context.coordinator.parent = self
-        searchField.placeholderString = placeholder
+        applyAppearance(to: searchField)
         if searchField.stringValue != text {
             searchField.stringValue = text
         }
+    }
+
+    private func applyAppearance(to searchField: NSSearchField) {
+        searchField.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
+        searchField.textColor = .labelColor
+        let font = searchField.font ?? .preferredFont(forTextStyle: .title3)
+        searchField.placeholderAttributedString = NSAttributedString(
+            string: placeholder,
+            attributes: [
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .font: font
+            ]
+        )
     }
 
     final class Coordinator: NSObject, NSSearchFieldDelegate {
