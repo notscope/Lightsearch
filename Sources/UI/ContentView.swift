@@ -227,6 +227,7 @@ struct ContentView: View {
             SearchResultRow(
                 title: preference.title,
                 subtitle: preference.subtitle,
+                kind: "System Setting",
                 icon: WorkspaceIconView(path: preference.iconPath),
                 isSelected: state.selectedIndex == index,
                 accessibilityHint: "Opens this setting in System Settings",
@@ -242,6 +243,7 @@ struct ContentView: View {
             SearchResultRow(
                 title: "File Search",
                 subtitle: "Search files and folders",
+                kind: "Action",
                 icon: Image(systemName: "doc.text.magnifyingglass")
                     .font(.body.weight(.medium))
                     .foregroundStyle(.secondary),
@@ -259,6 +261,7 @@ struct ContentView: View {
             SearchResultRow(
                 title: application.name,
                 subtitle: application.bundleIdentifier ?? application.path,
+                kind: "Application",
                 icon: WorkspaceIconView(path: application.path),
                 isSelected: state.selectedIndex == index,
                 accessibilityHint: "Opens the application",
@@ -317,6 +320,7 @@ struct ContentView: View {
                                 SearchResultRow(
                                     title: file.name,
                                     subtitle: file.parentPath,
+                                    kind: file.isDirectory ? "Folder" : "File",
                                     icon: WorkspaceIconView(path: file.path),
                                     isSelected: state.selectedIndex == index,
                                     accessibilityHint: file.isDirectory ? "Opens the folder" : "Opens the file",
@@ -603,6 +607,7 @@ private struct ConversionResultCard: View {
 private struct SearchResultRow<Icon: View>: View {
     let title: String
     let subtitle: String?
+    var kind: String? = nil
     let icon: Icon
     let isSelected: Bool
     let accessibilityHint: String
@@ -642,6 +647,11 @@ private struct SearchResultRow<Icon: View>: View {
                         .foregroundStyle(.primary)
                         .transition(.opacity)
                 }
+            } else if let kind {
+                Text(kind)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
         }
         .padding(.horizontal, 12)
