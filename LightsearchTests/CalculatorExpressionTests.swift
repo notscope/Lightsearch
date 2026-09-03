@@ -199,52 +199,167 @@ final class CalculatorExpressionTests: XCTestCase {
             "",
             "   ",
             "2 +",
+            "2 *",
+            "2 ^",
+            "2 /",
+            "2 %",
+            "(2 +",
+            "sin(",
+            "sqrt(",
             "+",
             "-",
             "(",
             ")",
             "(2 + 3",
             "2 + 3)",
+            "()",
+            "( )",
+            "(())",
+            "2 + ()",
+            "() + 2",
+            ")(",
+            "())()",
             "2 ** 3",
             "2 // 3",
             "2 / 0",
+            "1 / (2 - 2)",
+            "1 divided by 0",
+            "1 over 0",
             "2 % 0",
+            "10 mod 0",
+            "10 modulo 0",
+            "mod(10, 0)",
+            "modulo(10, 0)",
             "50 %",
             "sqrt()",
             "sqrt(1, 2)",
             "sqrt(-1)",
+            "cbrt()",
+            "cbrt(1, 2)",
+            "ln()",
+            "ln(1, 2)",
             "ln(0)",
             "ln(-1)",
+            "log()",
             "log(0)",
             "log(-1)",
             "log(10, 1)",
             "log(10, 0)",
+            "log(10, -2)",
+            "log(-10, 10)",
+            "log(0, 10)",
+            "log(10, 10, 10)",
+            "log2()",
+            "log2(1, 2)",
+            "log2(0)",
+            "log2(-1)",
             "(-2) ^ 0.5",
             "0 ^ -1",
+            "0 ^ -0.5",
             "tan(90)",
+            "tan(270)",
+            "tan(-90)",
+            "tand(90)",
+            "tand(270)",
             "tanr(pi / 2)",
+            "tanr(-pi / 2)",
+            "tanr(3 * pi / 2)",
             "asin(2)",
+            "asin(-2)",
+            "asin(1.01)",
+            "asin(-1.01)",
+            "acos(2)",
             "acos(-2)",
+            "acos(1.01)",
+            "acos(-1.01)",
+            "asinr(2)",
+            "acosr(2)",
             "factorial(-1)",
+            "factorial(-5)",
             "factorial(3.5)",
+            "fact(-1)",
+            "fact(3.5)",
+            "(-1)!",
+            "(-5)!",
             "171!",
             "1e",
             "1e+",
             "1e-",
+            "2e",
+            "2e+",
+            "2e-",
             "1,2",
             "1,2345",
             "1,234,5678",
             "1..2",
+            "1.2.3",
+            "..",
+            ".",
+            ",",
+            ",1",
+            "1,",
+            "1,,2",
+            "2 3",
+            "12 34",
+            "(2) 3",
+            "(2 + 3) 4",
             "2 ? 3",
             "unknown",
             "unknown(2)",
             "min()",
             "min(1,)",
             "min(,1)",
+            "max()",
             "sum()",
+            "avg()",
+            "average()",
+            "mean()",
+            "hypot()",
+            "hypot(1)",
+            "hypot(1, 2, 3)",
+            "pow()",
+            "pow(1)",
+            "pow(1, 2, 3)",
+            "root()",
+            "root(1)",
+            "root(1, 2, 3)",
+            "root(16, 0)",
+            "root(0, -2)",
+            "root(-16, 2)",
+            "root(-8, 3)",
+            "mod()",
+            "mod(1)",
+            "mod(1, 2, 3)",
+            "modulo()",
+            "modulo(1)",
+            "modulo(1, 2, 3)",
             "2 divided 4",
             "2 multiplied 4",
-            "2 + 3 apples"
+            "10 divided by",
+            "10 multiplied by",
+            "10 plus",
+            "10 minus",
+            "10 mod",
+            "10 modulo",
+            "positive",
+            "negative",
+            "by 5",
+            "over 2",
+            "divided by 2",
+            "multiplied by 2",
+            "2 + 3 apples",
+            "safari",
+            "chrome",
+            "settings",
+            "terminal",
+            "finder",
+            "git status",
+            "/System/Applications",
+            "apple.com",
+            "$50",
+            "100$",
+            "@user",
+            "#hashtag"
         ]
 
         for expression in invalidExpressions {
@@ -260,8 +375,16 @@ final class CalculatorExpressionTests: XCTestCase {
             "10 ^ 400",
             "(-10) ^ 401.5",
             "1e308 * 1e308",
+            "1e308 + 1e308",
+            "-1e308 - 1e308",
+            "1e308 / 1e-10",
             "exp(1000)",
             "factorial(171)",
+            "fact(171)",
+            "pow(10, 400)",
+            "hypot(1.5e308, 1.5e308)",
+            "sum(1e308, 1e308)",
+            "avg(1e308, 1e308)",
             "sqrt(1e309)",
             "1e309"
         ]
@@ -303,7 +426,233 @@ final class CalculatorExpressionTests: XCTestCase {
         let slashDate = ConversionEngine.result(for: "1/1/2020")
         XCTAssertEqual(slashDate?.categoryTitle, "Date & Time")
 
+        let prefixedMultiplication = ConversionEngine.result(for: "what is 10 * 5")
+        XCTAssertEqual(prefixedMultiplication?.categoryTitle, "Calculator")
+        XCTAssertEqual(prefixedMultiplication?.outputValue, "50")
+
+        let prefixedDivision = ConversionEngine.result(for: "what's 100 / 4")
+        XCTAssertEqual(prefixedDivision?.categoryTitle, "Calculator")
+        XCTAssertEqual(prefixedDivision?.outputValue, "25")
+
+        let convertPrefixed = ConversionEngine.result(for: "convert 2 + 2")
+        XCTAssertEqual(convertPrefixed?.categoryTitle, "Calculator")
+        XCTAssertEqual(convertPrefixed?.outputValue, "4")
+
+        let mixedTrigonometry = ConversionEngine.result(for: "sin(30) + 1")
+        XCTAssertEqual(mixedTrigonometry?.categoryTitle, "Calculator")
+        XCTAssertEqual(mixedTrigonometry?.outputValue, displayNumber(1.5))
+
+        let measurementLength = ConversionEngine.result(for: "10 m to ft")
+        XCTAssertEqual(measurementLength?.categoryTitle, "Length")
+
+        let measurementTemp = ConversionEngine.result(for: "100 c to f")
+        XCTAssertEqual(measurementTemp?.categoryTitle, "Temperature")
+
         XCTAssertNil(ConversionEngine.result(for: "not a calculator expression"))
+    }
+
+    func testWordBasedUnaryAndChainedOperators() {
+        assertValue("positive 5", equals: 5)
+        assertValue("negative 5", equals: -5)
+        assertValue("positive negative 5", equals: -5)
+        assertValue("negative negative 5", equals: 5)
+        assertValue("2 * negative 3", equals: -6)
+        assertValue("2 + negative 3", equals: -1)
+        assertValue("2 plus 3 * 4", equals: 14)
+        assertValue("(2 plus 3) times 4", equals: 20)
+        assertValue("10 minus 2 times 3", equals: 4)
+        assertValue("24 divided by 3 divided by 2", equals: 4)
+        assertValue("2 times 3 times 4", equals: 24)
+        assertValue("24 over 3 over 2", equals: 4)
+        assertValue("10 mod 4 mod 3", equals: 2)
+        assertValue("2 plus 3 multiplied by 4", equals: 14)
+    }
+
+    func testCaseInsensitiveKeywordsAndFunctions() {
+        assertValue("SIN(30)", equals: 0.5, accuracy: 1e-12)
+        assertValue("COS(60)", equals: 0.5, accuracy: 1e-12)
+        assertValue("TAN(45)", equals: 1, accuracy: 1e-12)
+        assertValue("SQRT(16)", equals: 4)
+        assertValue("CBRT(27)", equals: 3)
+        assertValue("LOG(100)", equals: 2)
+        assertValue("LN(E)", equals: 1, accuracy: 1e-12)
+        assertValue("ABS(-5)", equals: 5)
+        assertValue("MIN(4, 2)", equals: 2)
+        assertValue("MAX(4, 2)", equals: 4)
+        assertValue("SUM(1, 2, 3)", equals: 6)
+        assertValue("PI", equals: Double.pi)
+        assertValue("TAU", equals: 2 * Double.pi)
+        assertValue("PHI", equals: (1 + sqrt(5)) / 2)
+        assertValue("GOLDENRATIO", equals: (1 + sqrt(5)) / 2)
+        assertValue("2 PLUS 3", equals: 5)
+        assertValue("10 MINUS 4", equals: 6)
+        assertValue("3 TIMES 5", equals: 15)
+        assertValue("8 DIVIDED BY 2", equals: 4)
+        assertValue("8 OVER 2", equals: 4)
+        assertValue("10 MOD 3", equals: 1)
+    }
+
+    func testSingleArgumentFunctionsWithoutParentheses() {
+        assertValue("cbrt 27", equals: 3)
+        assertValue("cbrt -8", equals: -2)
+        assertValue("abs -10", equals: 10)
+        assertValue("floor 3.9", equals: 3)
+        assertValue("ceil 3.1", equals: 4)
+        assertValue("round 3.5", equals: 4)
+        assertValue("trunc -3.9", equals: -3)
+        assertValue("ln e", equals: 1, accuracy: 1e-12)
+        assertValue("log 100", equals: 2)
+        assertValue("log10 1000", equals: 3)
+        assertValue("log2 8", equals: 3)
+        assertValue("exp 0", equals: 1)
+        assertValue("deg pi", equals: 180, accuracy: 1e-12)
+        assertValue("rad 180", equals: Double.pi, accuracy: 1e-12)
+        assertValue("sinh 0", equals: 0, accuracy: 1e-12)
+        assertValue("cosh 0", equals: 1, accuracy: 1e-12)
+        assertValue("tanh 0", equals: 0, accuracy: 1e-12)
+        assertValue("percent 50", equals: 0.5)
+        assertValue("sin 30 + cos 60", equals: 1, accuracy: 1e-12)
+    }
+
+    func testExplicitDegreeAndRadianTrigonometry() {
+        assertValue("tand(45)", equals: 1, accuracy: 1e-12)
+        assertValue("tand 45", equals: 1, accuracy: 1e-12)
+        assertValue("asind(1)", equals: 90, accuracy: 1e-12)
+        assertValue("asind(0.5)", equals: 30, accuracy: 1e-12)
+        assertValue("acosd(0)", equals: 90, accuracy: 1e-12)
+        assertValue("acosd(0.5)", equals: 60, accuracy: 1e-12)
+        assertValue("atand(1)", equals: 45, accuracy: 1e-12)
+        assertValue("sin(-30)", equals: -0.5, accuracy: 1e-12)
+        assertValue("cos(-60)", equals: 0.5, accuracy: 1e-12)
+        assertValue("tan(-45)", equals: -1, accuracy: 1e-12)
+        assertValue("asinr(0)", equals: 0, accuracy: 1e-12)
+        assertValue("asinr(-1)", equals: -Double.pi / 2, accuracy: 1e-12)
+        assertValue("acosr(0)", equals: Double.pi / 2, accuracy: 1e-12)
+        assertValue("acosr(-1)", equals: Double.pi, accuracy: 1e-12)
+        assertValue("atanr(0)", equals: 0, accuracy: 1e-12)
+        assertValue("atanr(-1)", equals: -Double.pi / 4, accuracy: 1e-12)
+        assertValue("sinh(-1)", equals: -sinh(1), accuracy: 1e-12)
+        assertValue("cosh(-1)", equals: cosh(1), accuracy: 1e-12)
+        assertValue("tanh(-1)", equals: -tanh(1), accuracy: 1e-12)
+        assertValue("cosh(2)^2 - sinh(2)^2", equals: 1, accuracy: 1e-12)
+    }
+
+    func testAlgebraicIdentitiesAndConstants() {
+        assertValue("phi ^ 2 - phi - 1", equals: 0, accuracy: 1e-12)
+        assertValue("goldenratio ^ 2 - goldenratio - 1", equals: 0, accuracy: 1e-12)
+        assertValue("2phi", equals: 1 + sqrt(5), accuracy: 1e-12)
+        assertValue("2tau", equals: 4 * Double.pi, accuracy: 1e-12)
+        assertValue("(2 + 1)pi", equals: 3 * Double.pi, accuracy: 1e-12)
+        assertValue("pi / 2", equals: Double.pi / 2, accuracy: 1e-12)
+        assertValue("tau / 4", equals: Double.pi / 2, accuracy: 1e-12)
+    }
+
+    func testFactorialBoundaryAndComposition() {
+        var expectedFactorial170 = 1.0
+        for factor in 2...170 {
+            expectedFactorial170 *= Double(factor)
+        }
+        assertValue("170!", equals: expectedFactorial170, accuracy: expectedFactorial170 * 1e-14)
+        assertValue("factorial(170)", equals: expectedFactorial170, accuracy: expectedFactorial170 * 1e-14)
+        assertValue("(3!)!", equals: 720)
+        assertValue("3! ^ 2", equals: 36)
+        assertValue("2 ^ 3!", equals: 64)
+        assertValue("(4!)%", equals: 0.24, accuracy: 1e-12)
+        assertValue("factorial(0)", equals: 1)
+        assertValue("fact(0)", equals: 1)
+        assertValue("fact(1)", equals: 1)
+        assertValue("-3!", equals: -6)
+        assertValue("-(3!)", equals: -6)
+    }
+
+    func testModuloAndPercentEdgeCases() {
+        assertValue("5.5 % 2", equals: 1.5)
+        assertValue("mod(5.5, 2)", equals: 1.5)
+        assertValue("modulo(5.5, 2)", equals: 1.5)
+        assertValue("7.5 mod 2.5", equals: 0)
+        assertValue("10 % -4", equals: 2)
+        assertValue("-10 % 4", equals: -2)
+        assertValue("-10 % -4", equals: -2)
+        assertValue("(2 + 3)%", equals: 0.05, accuracy: 1e-12)
+        assertValue("(50%) ^ 2", equals: 0.25, accuracy: 1e-12)
+        assertValue("2 ^ 50%", equals: sqrt(2), accuracy: 1e-12)
+        assertValue("min(50%, 25%)", equals: 0.25, accuracy: 1e-12)
+    }
+
+    func testAggregateFunctionsEdgeCases() {
+        assertValue("min(42)", equals: 42)
+        assertValue("max(42)", equals: 42)
+        assertValue("sum(42)", equals: 42)
+        assertValue("avg(42)", equals: 42)
+        assertValue("average(42)", equals: 42)
+        assertValue("mean(42)", equals: 42)
+        assertValue("sum(-5, 5)", equals: 0)
+        assertValue("sum(1, -2, 3, -4, 5)", equals: 3)
+        assertValue("min(2 + 3, 3 * 3, 10 / 2)", equals: 5)
+        assertValue("max(2 + 3, 3 * 3, 10 / 2)", equals: 9)
+        assertValue("sum(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)", equals: 55)
+        assertValue("avg(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)", equals: 5.5)
+        assertValue("hypot(0, 0)", equals: 0)
+        assertValue("hypot(-3, 4)", equals: 5)
+        assertValue("hypot(3, -4)", equals: 5)
+        assertValue("hypot(-3, -4)", equals: 5)
+    }
+
+    func testLogarithmsAndRootsEdgeCases() {
+        assertValue("log(1000, 10)", equals: 3)
+        assertValue("log(64, 4)", equals: 3)
+        assertValue("log(16, 2)", equals: 4)
+        assertValue("log(5, 5)", equals: 1)
+        assertValue("log(1, 5)", equals: 0)
+        assertValue("log10(0.1)", equals: -1, accuracy: 1e-12)
+        assertValue("log2(0.5)", equals: -1, accuracy: 1e-12)
+        assertValue("log2(1024)", equals: 10)
+        assertValue("ln(1)", equals: 0)
+        assertValue("root(0, 5)", equals: 0)
+        assertValue("root(1000, 3)", equals: 10, accuracy: 1e-12)
+        assertValue("root(64, 6)", equals: 2, accuracy: 1e-12)
+        assertValue("root(1, 100)", equals: 1)
+        assertValue("cbrt(0)", equals: 0)
+        assertValue("cbrt(-0.0)", equals: 0)
+        assertValue("cbrt(-27)", equals: -3)
+    }
+
+    func testRoundingNegativeValuesAndBoundaries() {
+        assertValue("floor(-3.1)", equals: -4)
+        assertValue("floor(3.0)", equals: 3)
+        assertValue("floor(-3.0)", equals: -3)
+        assertValue("ceil(-3.9)", equals: -3)
+        assertValue("ceil(3.0)", equals: 3)
+        assertValue("ceil(-3.0)", equals: -3)
+        assertValue("round(2.5)", equals: 3)
+        assertValue("round(-2.5)", equals: -3)
+        assertValue("round(0.0)", equals: 0)
+        assertValue("trunc(3.9)", equals: 3)
+        assertValue("trunc(3.0)", equals: 3)
+        assertValue("trunc(-3.0)", equals: -3)
+    }
+
+    func testNumberFormattingAndUnicodeOperators() {
+        assertValue(".0", equals: 0)
+        assertValue("0.", equals: 0)
+        assertValue(".5 + .5", equals: 1)
+        assertValue("1. + 2.", equals: 3)
+        assertValue("3 ⋅ 4", equals: 12)
+        assertValue("−5", equals: -5)
+        assertValue("2 + −3", equals: -1)
+        assertValue("5 − −3", equals: 8)
+    }
+
+    func testImplicitMultiplicationExpansions() {
+        assertValue("(2 + 3)(4 + 5)", equals: 45)
+        assertValue("2(3)(4)(5)", equals: 120)
+        assertValue("(2)(3)(4)", equals: 24)
+        assertValue("3(2pi)", equals: 6 * Double.pi)
+    }
+
+    func testDeeplyNestedParentheses() {
+        assertValue("((((((((2 + 3))))))))", equals: 5)
+        assertValue("(1 + (2 * (3 + (4 * (5 - 3)))))", equals: 23)
     }
 
     private func assertValue(
