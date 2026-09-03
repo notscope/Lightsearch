@@ -626,40 +626,12 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
     }
 }
 
-private struct ThemedGlassModifier: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-    let cornerRadius: CGFloat
-
-    func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            content.glassEffect(
-                .regular.tint(
-                    colorScheme == .dark
-                        ? Color(nsColor: .windowBackgroundColor).opacity(0.85)
-                        : Color(nsColor: .windowBackgroundColor).opacity(0.75)
-                ),
-                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            )
-        } else {
-            content.background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        colorScheme == .dark
-                            ? Color(nsColor: .windowBackgroundColor).opacity(0.88)
-                            : Color(nsColor: .windowBackgroundColor).opacity(0.85)
-                    )
-                    .background(
-                        .ultraThinMaterial,
-                        in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    )
-            }
-        }
-    }
-}
-
 private extension View {
     func lightsearchGlass(cornerRadius: CGFloat) -> some View {
-        modifier(ThemedGlassModifier(cornerRadius: cornerRadius))
+        glassEffect(
+            .regular.tint(Color(nsColor: .windowBackgroundColor).opacity(0.85)),
+            in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        )
     }
 }
 
