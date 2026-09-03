@@ -354,13 +354,26 @@ enum InstalledApplicationScanner {
             }
         }
 
+        let extraRoots = [
+            "/System/Cryptexes/App/System/Applications",
+            "/System/Library/CoreServices/Applications"
+        ]
+        for extraRoot in extraRoots where fileManager.fileExists(atPath: extraRoot) {
+            roots.insert(extraRoot)
+        }
+
         var applicationsByIdentifier = [String: InstalledApplication]()
+
+        let finderURL = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app", isDirectory: true)
+        if let finderApp = parseApplication(at: finderURL, fileManager: fileManager) {
+            applicationsByIdentifier[finderApp.id] = finderApp
+        }
 
         for rootPath in roots.sorted() {
             let rootURL = URL(fileURLWithPath: rootPath, isDirectory: true)
             guard let enumerator = fileManager.enumerator(
                 at: rootURL,
-                includingPropertiesForKeys: [.isDirectoryKey, .isPackageKey],
+                includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .isPackageKey],
                 options: [.skipsHiddenFiles, .skipsPackageDescendants]
             ) else {
                 continue
@@ -368,48 +381,13 @@ enum InstalledApplicationScanner {
 
             for case let applicationURL as URL in enumerator {
                 autoreleasepool {
-                    guard applicationURL.pathExtension.caseInsensitiveCompare("app") == .orderedSame else {
+                    guard let application = parseApplication(at: applicationURL, fileManager: fileManager) else {
                         return
                     }
 
-                    let values = try? applicationURL.resourceValues(forKeys: [.isDirectoryKey])
-                    guard values?.isDirectory == true else { return }
-
-                    // Prefer direct Info.plist parsing to avoid creating and retaining
-                    // hundreds of permanent CFBundle/NSBundle records in CoreFoundation.
-                    let plistURL = applicationURL.appendingPathComponent("Contents/Info.plist")
-                    var displayName: String?
-                    var bundleIdentifier: String?
-
-                    if let plistData = try? Data(contentsOf: plistURL, options: .mappedIfSafe),
-                       let plist = try? PropertyListSerialization.propertyList(
-                           from: plistData,
-                           options: [],
-                           format: nil
-                       ) as? [String: Any] {
-                        displayName = (plist["CFBundleDisplayName"] as? String)
-                            ?? (plist["CFBundleName"] as? String)
-                        bundleIdentifier = plist["CFBundleIdentifier"] as? String
-                    } else if let bundle = Bundle(url: applicationURL) {
-                        displayName = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
-                            ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
-                        bundleIdentifier = bundle.bundleIdentifier
-                    }
-
-                    let name = displayName ?? applicationURL.deletingPathExtension().lastPathComponent
-                    let standardizedPath = applicationURL.standardizedFileURL.path
-                    let identifier = bundleIdentifier ?? standardizedPath
-
-                    let application = InstalledApplication(
-                        id: identifier,
-                        name: name,
-                        bundleIdentifier: bundleIdentifier,
-                        path: standardizedPath
-                    )
-
                     // A bundle can be visible in more than one application domain.
                     // Keep the first stable result and avoid duplicate rows.
-                    applicationsByIdentifier[identifier] = applicationsByIdentifier[identifier] ?? application
+                    applicationsByIdentifier[application.id] = applicationsByIdentifier[application.id] ?? application
                 }
             }
         }
@@ -421,5 +399,53 @@ enum InstalledApplicationScanner {
             }
             return nameComparison == .orderedAscending
         }
+    }
+
+    nonisolated static func parseApplication(
+        at applicationURL: URL,
+        fileManager: FileManager = .default
+    ) -> InstalledApplication? {
+        guard applicationURL.pathExtension.caseInsensitiveCompare("app") == .orderedSame else {
+            return nil
+        }
+
+        let values = try? applicationURL.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        let isDir = values?.isDirectory == true || (
+            values?.isSymbolicLink == true &&
+            (try? applicationURL.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+        )
+        guard isDir else { return nil }
+
+        // Prefer direct Info.plist parsing to avoid creating and retaining
+        // hundreds of permanent CFBundle/NSBundle records in CoreFoundation.
+        let plistURL = applicationURL.appendingPathComponent("Contents/Info.plist")
+        var displayName: String?
+        var bundleIdentifier: String?
+
+        if let plistData = try? Data(contentsOf: plistURL, options: .mappedIfSafe),
+           let plist = try? PropertyListSerialization.propertyList(
+               from: plistData,
+               options: [],
+               format: nil
+           ) as? [String: Any] {
+            displayName = (plist["CFBundleDisplayName"] as? String)
+                ?? (plist["CFBundleName"] as? String)
+            bundleIdentifier = plist["CFBundleIdentifier"] as? String
+        } else if let bundle = Bundle(url: applicationURL) {
+            displayName = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+                ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+            bundleIdentifier = bundle.bundleIdentifier
+        }
+
+        let name = displayName ?? applicationURL.deletingPathExtension().lastPathComponent
+        let standardizedPath = applicationURL.standardizedFileURL.path
+        let identifier = bundleIdentifier ?? standardizedPath
+
+        return InstalledApplication(
+            id: identifier,
+            name: name,
+            bundleIdentifier: bundleIdentifier,
+            path: standardizedPath
+        )
     }
 }

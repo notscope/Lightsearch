@@ -54,6 +54,17 @@ final class PerformanceBenchmarkTests: XCTestCase {
         print("---------------------------------------------")
 
         XCTAssertFalse(apps.isEmpty, "Scanner should discover installed applications on macOS")
+        XCTAssertTrue(apps.contains { $0.name.caseInsensitiveCompare("Safari") == .orderedSame }, "Safari should be discovered")
+        XCTAssertTrue(apps.contains { $0.name.caseInsensitiveCompare("Finder") == .orderedSame }, "Finder should be discovered")
+    }
+
+    func testSafariAndFinderSearchRanking() {
+        let apps = InstalledApplicationScanner.scan()
+        let safariResults = ApplicationSearch.rankedResults(apps, query: "safari")
+        XCTAssertEqual(safariResults.first?.name, "Safari", "Safari must be the top search result for 'safari'")
+
+        let finderResults = ApplicationSearch.rankedResults(apps, query: "finder")
+        XCTAssertEqual(finderResults.first?.name, "Finder", "Finder must be the top search result for 'finder'")
     }
 
     func testSystemPreferencesScannerBenchmark() {
