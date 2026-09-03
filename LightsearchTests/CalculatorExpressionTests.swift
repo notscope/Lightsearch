@@ -821,4 +821,78 @@ final class CalculatorExpressionTests: XCTestCase {
         XCTAssertNil(ConversionEngine.result(for: "10,5", locale: idLocale))
         XCTAssertNil(ConversionEngine.result(for: "10.5", locale: usLocale))
     }
+
+    func testCombinatoricsAndNumberTheoryFunctions() {
+        assertValue("nCr(10, 2)", equals: 45)
+        assertValue("ncr(10, 2)", equals: 45)
+        assertValue("comb(10, 2)", equals: 45)
+        assertValue("choose(10, 2)", equals: 45)
+        assertValue("nCr(5, 5)", equals: 1)
+        assertValue("nCr(5, 0)", equals: 1)
+        assertValue("nCr(5, 6)", equals: 0)
+        assertValue("nCr(100, 2)", equals: 4950)
+
+        assertValue("nPr(10, 2)", equals: 90)
+        assertValue("npr(10, 2)", equals: 90)
+        assertValue("perm(10, 2)", equals: 90)
+        assertValue("nPr(5, 5)", equals: 120)
+        assertValue("nPr(5, 0)", equals: 1)
+        assertValue("nPr(5, 6)", equals: 0)
+
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nCr(4.5, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nCr(4, 2.5)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nCr(-5, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nCr(5, -2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nPr(4.5, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nPr(-5, 2)"))
+
+        assertValue("gcd(12, 18)", equals: 6)
+        assertValue("gcd(-12, 18)", equals: 6)
+        assertValue("gcd(12, 18, 24)", equals: 6)
+        assertValue("gcd(7, 13)", equals: 1)
+        assertValue("gcd(0, 5)", equals: 5)
+        assertValue("gcd(5, 0)", equals: 5)
+        assertValue("gcd(0, 0)", equals: 0)
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("gcd(12.5, 4)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("gcd(12)"))
+
+        assertValue("lcm(4, 6)", equals: 12)
+        assertValue("lcm(-4, 6)", equals: 12)
+        assertValue("lcm(12, 18, 24)", equals: 72)
+        assertValue("lcm(2, 3, 5)", equals: 30)
+        assertValue("lcm(0, 5)", equals: 0)
+        assertValue("lcm(5, 0)", equals: 0)
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("lcm(4.5, 6)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("lcm(4)"))
+    }
+
+    func testUnicodeFractions() {
+        assertValue("½", equals: 0.5)
+        assertValue("¼", equals: 0.25)
+        assertValue("¾", equals: 0.75)
+        assertValue("⅛", equals: 0.125)
+        assertValue("⅜", equals: 0.375)
+        assertValue("⅝", equals: 0.625)
+        assertValue("⅞", equals: 0.875)
+        assertValue("⅕", equals: 0.2)
+        assertValue("⅖", equals: 0.4)
+        assertValue("⅗", equals: 0.6)
+        assertValue("⅘", equals: 0.8)
+        assertValue("⅓ + ⅔", equals: 1.0)
+        assertValue("⅙ + ⅚", equals: 1.0)
+
+        assertValue("½ + ½", equals: 1.0)
+        assertValue("10 * ½", equals: 5.0)
+        assertValue("3 * ¾", equals: 2.25)
+        assertValue("1 - ¼", equals: 0.75)
+
+        assertValue("2½", equals: 2.5)
+        assertValue("1¼", equals: 1.25)
+        assertValue("3¾", equals: 3.75)
+        assertValue("2½ + ¼", equals: 2.75)
+        assertValue("2½ * 2", equals: 5.0)
+
+        XCTAssertNil(ConversionEngine.result(for: "½"))
+        XCTAssertNil(ConversionEngine.result(for: "2½"))
+    }
 }

@@ -65,6 +65,24 @@ enum CalculatorExpressionEvaluator {
     }
 
     private struct Tokenizer {
+        private static let unicodeFractions: [Character: Double] = [
+            "½": 0.5,
+            "⅓": 1.0 / 3.0,
+            "⅔": 2.0 / 3.0,
+            "¼": 0.25,
+            "¾": 0.75,
+            "⅕": 0.2,
+            "⅖": 0.4,
+            "⅗": 0.6,
+            "⅘": 0.8,
+            "⅙": 1.0 / 6.0,
+            "⅚": 5.0 / 6.0,
+            "⅛": 0.125,
+            "⅜": 0.375,
+            "⅝": 0.625,
+            "⅞": 0.875
+        ]
+
         let characters: [Character]
         let locale: Locale
         let decimalSeparator: Character
@@ -155,7 +173,10 @@ enum CalculatorExpressionEvaluator {
                     guard let number = readNumber() else { return nil }
                     tokens.append(.number(number))
                 default:
-                    if let superscriptValue = readSuperscriptNumber() {
+                    if let fraction = Self.unicodeFractions[character] {
+                        index += 1
+                        tokens.append(.number(fraction))
+                    } else if let superscriptValue = readSuperscriptNumber() {
                         tokens.append(.power)
                         tokens.append(.number(superscriptValue))
                     } else if isASCIIDigit(character) {
@@ -274,13 +295,21 @@ enum CalculatorExpressionEvaluator {
                 }
             }
 
-            let hasDigits = integerDigitCount > 0 || hasFraction
+            var mixedFraction = 0.0
+            if integerDigitCount > 0, !hasFraction, index < characters.count,
+               let frac = Self.unicodeFractions[characters[index]] {
+                index += 1
+                mixedFraction = frac
+            }
+
+            let hasDigits = integerDigitCount > 0 || hasFraction || mixedFraction > 0
             guard hasDigits else { return nil }
 
             // Only consume an exponent when it is complete. A directly
             // adjacent incomplete "e" is rejected rather than interpreted as
             // implicit multiplication by Euler's number.
-            if index < characters.count,
+            if mixedFraction == 0,
+               index < characters.count,
                (characters[index] == "e" || characters[index] == "E") {
                 var exponentIndex = index + 1
                 if exponentIndex < characters.count,
@@ -304,6 +333,9 @@ enum CalculatorExpressionEvaluator {
             }
 
             var rawNumber = String(characters[start..<index])
+            if mixedFraction > 0 {
+                rawNumber.removeLast()
+            }
             if let grp = usedGroupingSeparator {
                 rawNumber = rawNumber.replacingOccurrences(of: String(grp), with: "")
                 rawNumber = rawNumber.replacingOccurrences(of: ",", with: ".")
@@ -312,7 +344,7 @@ enum CalculatorExpressionEvaluator {
             }
 
             guard let value = Double(rawNumber), value.isFinite else { return nil }
-            return value
+            return value + mixedFraction
         }
 
         private func groupingMatch(
@@ -664,6 +696,18 @@ enum CalculatorExpressionEvaluator {
             case "hypot":
                 guard arguments.count == 2 else { return nil }
                 return checked(Darwin.hypot(arguments[0], arguments[1]))
+            case "ncr", "comb", "choose":
+                guard arguments.count == 2 else { return nil }
+                return combinations(arguments[0], arguments[1])
+            case "npr", "perm":
+                guard arguments.count == 2 else { return nil }
+                return permutations(arguments[0], arguments[1])
+            case "gcd":
+                guard arguments.count >= 2 else { return nil }
+                return gcd(arguments)
+            case "lcm":
+                guard arguments.count >= 2 else { return nil }
+                return lcm(arguments)
             default:
                 return nil
             }
@@ -727,6 +771,118 @@ enum CalculatorExpressionEvaluator {
                 return nil
             }
             return checked(Darwin.pow(base, exponent))
+        }
+
+        private func combinations(_ nVal: Double, _ rVal: Double) -> Double? {
+            guard nVal.isFinite, rVal.isFinite,
+                  nVal >= 0, rVal >= 0,
+                  nVal.rounded(.towardZero) == nVal,
+                  rVal.rounded(.towardZero) == rVal else {
+                return nil
+            }
+
+            let n = Int(min(nVal, Double(Int.max)))
+            let r = Int(min(rVal, Double(Int.max)))
+
+            if r > n {
+                return 0
+            }
+            if r == 0 || r == n {
+                return 1
+            }
+
+            let k = min(r, n - r)
+            var result = 1.0
+            for i in 1...k {
+                result = (result * Double(n - i + 1)) / Double(i)
+                guard result.isFinite else { return nil }
+            }
+            return checked(result.rounded())
+        }
+
+        private func permutations(_ nVal: Double, _ rVal: Double) -> Double? {
+            guard nVal.isFinite, rVal.isFinite,
+                  nVal >= 0, rVal >= 0,
+                  nVal.rounded(.towardZero) == nVal,
+                  rVal.rounded(.towardZero) == rVal else {
+                return nil
+            }
+
+            let n = Int(min(nVal, Double(Int.max)))
+            let r = Int(min(rVal, Double(Int.max)))
+
+            if r > n {
+                return 0
+            }
+            if r == 0 {
+                return 1
+            }
+
+            var result = 1.0
+            for i in 0..<r {
+                result *= Double(n - i)
+                guard result.isFinite else { return nil }
+            }
+            return checked(result.rounded())
+        }
+
+        private func gcd(_ arguments: [Double]) -> Double? {
+            guard arguments.count >= 2 else { return nil }
+            var result: Int64 = 0
+
+            for (index, arg) in arguments.enumerated() {
+                guard arg.isFinite,
+                      arg.rounded(.towardZero) == arg,
+                      abs(arg) < Double(Int64.max) else {
+                    return nil
+                }
+                let intVal = abs(Int64(arg))
+                if index == 0 {
+                    result = intVal
+                } else {
+                    result = gcd2(result, intVal)
+                }
+            }
+
+            return Double(result)
+        }
+
+        private func gcd2(_ a: Int64, _ b: Int64) -> Int64 {
+            var x = a
+            var y = b
+            while y != 0 {
+                let temp = y
+                y = x % y
+                x = temp
+            }
+            return x
+        }
+
+        private func lcm(_ arguments: [Double]) -> Double? {
+            guard arguments.count >= 2 else { return nil }
+            var result: Double = 0
+
+            for (index, arg) in arguments.enumerated() {
+                guard arg.isFinite,
+                      arg.rounded(.towardZero) == arg else {
+                    return nil
+                }
+                let absArg = abs(arg)
+                if index == 0 {
+                    result = absArg
+                } else {
+                    if result == 0 || absArg == 0 {
+                        result = 0
+                    } else {
+                        let g = Double(gcd2(Int64(min(result, Double(Int64.max - 1))), Int64(min(absArg, Double(Int64.max - 1)))))
+                        guard g > 0 else { return nil }
+                        result = (result / g) * absArg
+                        guard result.isFinite else { return nil }
+                    }
+                }
+            }
+
+            return checked(result.rounded())
         }
 
         private func checked(_ value: Double) -> Double? {
