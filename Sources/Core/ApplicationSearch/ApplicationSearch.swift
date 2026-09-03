@@ -17,7 +17,7 @@ struct InstalledApplication: Identifiable, Hashable, Sendable {
     let bundleTokens: [String]
     let bundleAcronym: String?
 
-    init(
+    nonisolated init(
         id: String,
         name: String,
         bundleIdentifier: String?,
@@ -46,11 +46,11 @@ struct InstalledApplication: Identifiable, Hashable, Sendable {
         }
     }
 
-    func hash(into hasher: inout Hasher) {
+    nonisolated func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
 
-    static func == (lhs: InstalledApplication, rhs: InstalledApplication) -> Bool {
+    nonisolated static func == (lhs: InstalledApplication, rhs: InstalledApplication) -> Bool {
         lhs.id == rhs.id
     }
 }

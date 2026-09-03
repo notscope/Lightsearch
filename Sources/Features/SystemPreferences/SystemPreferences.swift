@@ -18,11 +18,11 @@ struct SystemPreference: Identifiable, Hashable, Sendable {
     let titleText: String
     let compactTitle: String
 
-    func hash(into hasher: inout Hasher) {
+    nonisolated func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
 
-    static func == (lhs: SystemPreference, rhs: SystemPreference) -> Bool {
+    nonisolated static func == (lhs: SystemPreference, rhs: SystemPreference) -> Bool {
         lhs.id == rhs.id
     }
 }
