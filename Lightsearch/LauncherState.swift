@@ -21,11 +21,14 @@ enum LauncherPage: Equatable {
 }
 
 enum LauncherResult: Identifiable {
+    case conversion(ConversionResult)
     case application(InstalledApplication)
     case fileSearch
 
     var id: String {
         switch self {
+        case let .conversion(conversion):
+            return conversion.id
         case let .application(application):
             return application.id
         case .fileSearch:
@@ -389,6 +392,7 @@ final class LauncherState: ObservableObject {
         didSet {
             selectedIndex = 0
             if page == .applications {
+                scheduleTimeZoneResolution()
                 rememberNonEmptyResults()
             } else {
                 scheduleFileSearch()
@@ -399,6 +403,7 @@ final class LauncherState: ObservableObject {
     @Published private(set) var page: LauncherPage = .applications
     @Published private(set) var applications: [InstalledApplication]
     @Published private(set) var fileResults: [SearchFile] = []
+    @Published private(set) var resolvedTimeZone: TimeZone?
     @Published private(set) var isLoading = true
     @Published private(set) var isFileSearchLoading = false
     @Published var selectedIndex = 0
@@ -407,6 +412,8 @@ final class LauncherState: ObservableObject {
     private let launchHistory = ApplicationLaunchHistory()
     private let fileSearchService = FileSearchService()
     private let recentFileHistory = RecentFileHistory()
+    private let timeZoneResolver = TimeZoneResolver()
+    private var timeZoneResolutionTask: Task<Void, Never>?
     private var fileSearchTask: Task<Void, Never>?
     private var previousResults: [InstalledApplication] = []
     private let maximumFileResults = 50
@@ -430,6 +437,11 @@ final class LauncherState: ObservableObject {
 
     var visibleResults: [LauncherResult] {
         displayedResults
+    }
+
+    var conversionResult: ConversionResult? {
+        guard page == .applications else { return nil }
+        return ConversionEngine.result(for: query, resolvedTimeZone: resolvedTimeZone)
     }
 
     var isFileSearchPage: Bool {
@@ -501,6 +513,7 @@ final class LauncherState: ObservableObject {
     }
 
     func resetForPresentation() {
+        stopTimeZoneResolution()
         stopFileSearch()
         page = .applications
         query = ""
@@ -508,6 +521,7 @@ final class LauncherState: ObservableObject {
     }
 
     func enterFileSearch() {
+        stopTimeZoneResolution()
         stopFileSearch()
         page = .files
         query = ""
@@ -516,6 +530,7 @@ final class LauncherState: ObservableObject {
     }
 
     func exitFileSearch() {
+        stopTimeZoneResolution()
         stopFileSearch()
         page = .applications
         query = ""
@@ -583,7 +598,51 @@ final class LauncherState: ObservableObject {
         return results
     }
 
+    private func scheduleTimeZoneResolution() {
+        stopTimeZoneResolution()
+
+        guard page == .applications,
+              let location = ConversionEngine.timeZoneLocation(for: query),
+              location.count >= 2,
+              ConversionEngine.result(for: query) == nil else {
+            return
+        }
+
+        let querySnapshot = query
+        timeZoneResolutionTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: 250_000_000)
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled, let self else { return }
+            let resolvedTimeZone = await self.timeZoneResolver.resolve(location: location)
+
+            guard !Task.isCancelled,
+                  self.page == .applications,
+                  self.query == querySnapshot else {
+                return
+            }
+
+            self.resolvedTimeZone = resolvedTimeZone
+            self.selectedIndex = 0
+        }
+    }
+
+    private func stopTimeZoneResolution() {
+        timeZoneResolutionTask?.cancel()
+        timeZoneResolutionTask = nil
+        timeZoneResolver.cancel()
+        resolvedTimeZone = nil
+    }
+
     private var filteredLauncherResults: [LauncherResult] {
+        var results: [LauncherResult] = []
+        if let conversionResult {
+            results.append(.conversion(conversionResult))
+        }
+
         var candidates = applications
         let searchText = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if !searchText.isEmpty {
@@ -603,10 +662,12 @@ final class LauncherState: ObservableObject {
             history: launchHistory
         )
 
-        return Array(ranked.prefix(maximumApplicationResults)).map { candidate in
+        results.append(contentsOf: ranked.prefix(maximumApplicationResults).map { candidate in
             candidate.id == fileSearchActionID
                 ? .fileSearch
                 : .application(candidate)
-        }
+        })
+
+        return results
     }
 }

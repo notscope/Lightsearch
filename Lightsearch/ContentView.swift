@@ -14,14 +14,21 @@ enum LauncherMetrics {
     static let dividerHeight: CGFloat = 1
     static let rowHeight: CGFloat = 54
     static let rowSpacing: CGFloat = 5
+    static let conversionLabelHeight: CGFloat = 28
     static let horizontalInset: CGFloat = 12
     static let verticalInset: CGFloat = 12
     static let cornerRadius: CGFloat = 32
     static let visibleEntryCount: Int = 7
 
-    /// Dynamically computed height to fit exactly `visibleEntryCount` entries before scrolling
+    /// A conversion card occupies the same vertical space as two rows.
+    static var conversionCardHeight: CGFloat {
+        (rowHeight * 2) + rowSpacing
+    }
+
+    /// Fixed height for every expanded search, including calculator results.
     static var expandedHeight: CGFloat {
-        let entriesHeight = (CGFloat(visibleEntryCount) * rowHeight) + (CGFloat(visibleEntryCount - 1) * rowSpacing)
+        let entriesHeight = (CGFloat(visibleEntryCount) * rowHeight)
+            + (CGFloat(max(visibleEntryCount - 1, 0)) * rowSpacing)
         let listContentHeight = (verticalInset * 2) + entriesHeight
         return collapsedHeight + dividerHeight + listContentHeight
     }
@@ -34,6 +41,7 @@ struct ContentView: View {
     let onOpenFileSearch: () -> Void
     let onBackFromFileSearch: () -> Void
     let onOpenFile: (SearchFile) -> Void
+    let onCopyConversion: (ConversionResult) -> Void
     let onSearchFieldReady: (NSSearchField) -> Void
     let onQueryChanged: (Bool) -> Void
 
@@ -43,6 +51,7 @@ struct ContentView: View {
         onOpenFileSearch: @escaping () -> Void = {},
         onBackFromFileSearch: @escaping () -> Void = {},
         onOpenFile: @escaping (SearchFile) -> Void = { _ in },
+        onCopyConversion: @escaping (ConversionResult) -> Void = { _ in },
         onSearchFieldReady: @escaping (NSSearchField) -> Void = { _ in },
         onQueryChanged: @escaping (Bool) -> Void = { _ in }
     ) {
@@ -51,6 +60,7 @@ struct ContentView: View {
         self.onOpenFileSearch = onOpenFileSearch
         self.onBackFromFileSearch = onBackFromFileSearch
         self.onOpenFile = onOpenFile
+        self.onCopyConversion = onCopyConversion
         self.onSearchFieldReady = onSearchFieldReady
         self.onQueryChanged = onQueryChanged
     }
@@ -199,6 +209,18 @@ struct ContentView: View {
     @ViewBuilder
     private func resultRow(_ result: LauncherResult, at index: Int) -> some View {
         switch result {
+        case let .conversion(conversion):
+            ConversionResultCard(
+                conversion: conversion,
+                isSelected: state.selectedIndex == index,
+                onSelect: {
+                    state.selectedIndex = index
+                },
+                onOpen: {
+                    state.selectedIndex = index
+                    onCopyConversion(conversion)
+                }
+            )
         case .fileSearch:
             SearchResultRow(
                 title: "File Search",
@@ -480,6 +502,93 @@ private struct RecentFileCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(file.name)
         .accessibilityHint(file.isDirectory ? "Opens the folder" : "Opens the file")
+    }
+}
+
+private struct ConversionResultCard: View {
+    let conversion: ConversionResult
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onOpen: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Calculator")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .padding(.horizontal, 12)
+                .frame(height: 28, alignment: .leading)
+
+            HStack(spacing: 0) {
+                valueColumn(
+                    value: conversion.inputValue,
+                    label: conversion.inputLabel
+                )
+                Divider()
+                    .frame(height: 56)
+
+                Image(systemName: "arrow.right")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 48)
+
+                Divider()
+                    .frame(height: 56)
+                valueColumn(
+                    value: conversion.outputValue,
+                    label: conversion.outputLabel
+                )
+            }
+            .padding(.horizontal, 10)
+            .frame(
+                height: LauncherMetrics.conversionCardHeight
+                    - LauncherMetrics.conversionLabelHeight
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: LauncherMetrics.conversionCardHeight, alignment: .top)
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.accentColor)
+            } else {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.thinMaterial)
+            }
+        }
+        .contentShape(Rectangle())
+        .overlay {
+            ClickTargetRepresentable(
+                onSingleClick: onSelect,
+                onDoubleClick: onOpen
+            )
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Convert \(conversion.inputValue) to \(conversion.outputValue)"
+        )
+        .accessibilityHint("Copies the conversion result")
+    }
+
+    private func valueColumn(value: String, label: String) -> some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(.thinMaterial, in: Capsule())
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

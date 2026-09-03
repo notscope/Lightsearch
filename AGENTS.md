@@ -19,15 +19,24 @@ Run these from the repository root:
 
 ```sh
 xcodebuild -project Lightsearch.xcodeproj -scheme Lightsearch -configuration Debug build
-./relaunch.sh
 git diff --check
 ```
 
-The first command compiles the app. `relaunch.sh` builds the configured Release product, quits any running Lightsearch instance, and launches the rebuilt app. It uses the default automatic code-signing configuration. `git diff --check` catches whitespace errors.
+The first command compiles the app. Run `./relaunch.sh` only after changes that touch Swift/source code and require the rebuilt app to be refreshed; Markdown-only documentation edits do not require a relaunch. The script builds the configured Release product, quits any running Lightsearch instance, and launches the rebuilt app. It uses the default automatic code-signing configuration. `git diff --check` catches whitespace errors.
 
 ## Coding Style & Naming Conventions
 
 Use four-space indentation, standard Swift formatting, and concise comments only for non-obvious AppKit or concurrency behavior. Types and protocols use `UpperCamelCase`; properties, methods, and local values use `lowerCamelCase`. Keep UI state on `@MainActor`, prefer SwiftUI composition for presentation, and keep panel/event logic in `LauncherController`. Use stable IDs for `ForEach` rows and avoid force unwraps/casts.
+
+## Implementation Priorities
+
+Prioritize the fastest practical implementation and reliable behavior over visual polish. Prefer native platform APIs and local, direct operations; avoid unnecessary work, allocations, I/O, network requests, view layers, and recomputation. Choose the simplest design that satisfies the requirement: do not add speculative abstractions, dependencies, state, or components unless they solve real complexity. Keep code easy to read and maintain, and make each feature behave exactly as its name and description promise.
+
+## Branching & Change Scope
+
+Treat documentation edits, typo fixes, and isolated low-risk changes as trivial; they may remain on the current branch or `main`. Treat new features, refactors, UI overhauls, performance or concurrency work, and build, signing, or dependency changes as significant; do them on a separate `codex/<short-description>` branch so `main` remains unaffected if something breaks. If the worktree already contains uncommitted changes, inspect and preserve them before switching branches or creating a branch; never stash, discard, or move them without explicit direction. When uncertain, classify the change as significant.
+
+After a significant change passes validation, merge its branch back into `main`, remove the temporary branch when it is no longer needed, and leave `main` checked out with a clean worktree. Trivial changes made directly on `main` should also finish clean.
 
 ## Testing Guidelines
 

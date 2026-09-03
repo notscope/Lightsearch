@@ -37,7 +37,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
         panel.acceptsMouseMovedEvents = false
         panel.animationBehavior = .none
         panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
         // Inherit the app's effective appearance so Liquid Glass follows the
@@ -58,6 +58,9 @@ final class LauncherController: NSObject, NSWindowDelegate {
                 },
                 onOpenFile: { [weak self] file in
                     self?.open(file)
+                },
+                onCopyConversion: { [weak self] conversion in
+                    self?.copy(conversion)
                 },
                 onSearchFieldReady: { [weak self] searchField in
                     self?.searchField = searchField
@@ -170,6 +173,12 @@ final class LauncherController: NSObject, NSWindowDelegate {
         }
     }
 
+    private func copy(_ conversion: ConversionResult) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(conversion.copyText, forType: .string)
+        hide()
+    }
+
     private func positionPanel() {
         let mouseLocation = NSEvent.mouseLocation
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) ?? NSScreen.main
@@ -183,7 +192,9 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     private func updatePanelSize(isExpanded: Bool) {
-        let targetHeight: CGFloat = isExpanded ? LauncherMetrics.expandedHeight : LauncherMetrics.collapsedHeight
+        let targetHeight: CGFloat = isExpanded
+            ? LauncherMetrics.expandedHeight
+            : LauncherMetrics.collapsedHeight
         guard abs(panel.frame.height - targetHeight) > 0.5 else { return }
 
         let currentFrame = panel.frame
@@ -217,13 +228,15 @@ final class LauncherController: NSObject, NSWindowDelegate {
             case UInt16(kVK_DownArrow):
                 self.state.moveSelection(by: 1)
                 return nil
-            case UInt16(kVK_Return):
+            case UInt16(kVK_Return), UInt16(kVK_ANSI_KeypadEnter):
                 if self.state.isFileSearchPage {
                     if let file = self.state.selectedFile() {
                         self.open(file)
                     }
                 } else {
                     switch self.state.selectedResult() {
+                    case let .conversion(conversion):
+                        self.copy(conversion)
                     case .fileSearch:
                         self.enterFileSearch()
                     case let .application(application):
