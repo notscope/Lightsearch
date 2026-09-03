@@ -22,8 +22,13 @@ This repository is a macOS SwiftUI/AppKit launcher organized into a clean `Sourc
   - `ContentView.swift` contains the launcher UI and reusable result-row views.
 - `Sources/Resources/`:
   - `Assets.xcassets/` contains the app icon and color assets.
+- `Tests/Core/`:
+  - `PerformanceBenchmarkTests.swift` contains the throughput and memory benchmark regression suite.
 - `Tests/Features/Calculator/`:
   - `CalculatorExpressionTests.swift` contains the calculator parser and `ConversionEngine` regression suite.
+- `docs/`:
+  - `BENCHMARKS.md` contains historical benchmark records, reproduction commands, and memory profiles.
+  - Audit and technical specification reports.
 
 The Xcode project is `Lightsearch.xcodeproj`, with the `LightsearchTests` XCTest target.
 
