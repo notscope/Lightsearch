@@ -132,7 +132,7 @@ struct ContentView: View {
                     : "Search for apps and commands...",
                 onViewCreated: onSearchFieldReady
             )
-            .frame(height: 30)
+            .frame(height: 26)
 
             if state.isFileSearchPage {
                 if !state.query.isEmpty {
@@ -588,7 +588,7 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
         searchField.isBordered = false
         searchField.drawsBackground = false
         searchField.focusRingType = .none
-        searchField.font = .preferredFont(forTextStyle: .title2)
+        searchField.font = .preferredFont(forTextStyle: .title1)
         searchField.controlSize = .large
         searchField.cell?.lineBreakMode = .byTruncatingTail
         if let searchCell = searchField.cell as? NSSearchFieldCell {
