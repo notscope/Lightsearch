@@ -246,11 +246,6 @@ enum CalculatorExpressionEvaluator {
     }
 
     private struct Parser {
-        private static let operatorWords: Set<String> = [
-            "by", "divided", "minus", "mod", "modulo", "multiplied",
-            "negative", "over", "plus", "positive", "times"
-        ]
-
         private static let singleArgumentFunctionNames: Set<String> = [
             "abs", "asin", "asind", "asinr", "acos", "acosd", "acosr",
             "atan", "atand", "atanr", "cbrt", "ceil", "cos", "cosd",
@@ -278,12 +273,12 @@ enum CalculatorExpressionEvaluator {
             guard var value = parseMultiplicative() else { return nil }
 
             while true {
-                if consume(.plus) || consumeWord("plus") {
+                if consume(.plus) {
                     guard let rhs = parseMultiplicative(), let result = checked(value + rhs) else {
                         return nil
                     }
                     value = result
-                } else if consume(.minus) || consumeWord("minus") {
+                } else if consume(.minus) {
                     guard let rhs = parseMultiplicative(), let result = checked(value - rhs) else {
                         return nil
                     }
@@ -298,18 +293,18 @@ enum CalculatorExpressionEvaluator {
             guard var value = parseUnary() else { return nil }
 
             while true {
-                if consume(.multiply) || consumeWord("times") || consumeWords("multiplied", "by") {
+                if consume(.multiply) {
                     guard let rhs = parseUnary(), let result = checked(value * rhs) else {
                         return nil
                     }
                     value = result
-                } else if consume(.divide) || consumeWord("over") || consumeWords("divided", "by") {
+                } else if consume(.divide) {
                     guard let rhs = parseUnary(), rhs != 0,
                           let result = checked(value / rhs) else {
                         return nil
                     }
                     value = result
-                } else if consume(.percent) || consumeWord("mod") || consumeWord("modulo") {
+                } else if consume(.percent) {
                     guard let rhs = parseUnary(), rhs != 0,
                           let result = checked(value.truncatingRemainder(dividingBy: rhs)) else {
                         return nil
@@ -329,11 +324,11 @@ enum CalculatorExpressionEvaluator {
         }
 
         private mutating func parseUnary() -> Double? {
-            if consume(.plus) || consumeWord("positive") {
+            if consume(.plus) {
                 return parseUnary()
             }
 
-            if consume(.minus) || consumeWord("negative") {
+            if consume(.minus) {
                 guard let value = parseUnary() else { return nil }
                 return checked(-value)
             }
@@ -426,34 +421,13 @@ enum CalculatorExpressionEvaluator {
             return true
         }
 
-        private mutating func consumeWord(_ word: String) -> Bool {
-            guard current == .identifier(word) else { return false }
-            index += 1
-            return true
-        }
-
-        private mutating func consumeWords(_ first: String, _ second: String) -> Bool {
-            guard current == .identifier(first), index + 1 < tokens.count,
-                  tokens[index + 1] == .identifier(second) else {
-                return false
-            }
-            index += 2
-            return true
-        }
-
         private func startsImplicitMultiplication(_ token: Token) -> Bool {
             switch token {
-            case let .identifier(name):
-                return !isOperatorWord(name)
-            case .leftParenthesis:
+            case .identifier, .leftParenthesis:
                 return true
             default:
                 return false
             }
-        }
-
-        private func isOperatorWord(_ name: String) -> Bool {
-            Self.operatorWords.contains(name)
         }
 
         private func constant(named name: String) -> Double? {

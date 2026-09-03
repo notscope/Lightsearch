@@ -42,14 +42,6 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("2 × 3", equals: 6)
         assertValue("2·3", equals: 6)
         assertValue("8 ÷ 2", equals: 4)
-        assertValue("2 plus 3", equals: 5)
-        assertValue("8 minus 3", equals: 5)
-        assertValue("2 times 3", equals: 6)
-        assertValue("2 multiplied by 3", equals: 6)
-        assertValue("8 divided by 2", equals: 4)
-        assertValue("8 over 2", equals: 4)
-        assertValue("10 mod 3", equals: 1)
-        assertValue("10 modulo 3", equals: 1)
     }
 
     func testDecimalGroupingAndScientificNotation() {
@@ -451,21 +443,44 @@ final class CalculatorExpressionTests: XCTestCase {
         XCTAssertNil(ConversionEngine.result(for: "not a calculator expression"))
     }
 
-    func testWordBasedUnaryAndChainedOperators() {
-        assertValue("positive 5", equals: 5)
-        assertValue("negative 5", equals: -5)
-        assertValue("positive negative 5", equals: -5)
-        assertValue("negative negative 5", equals: 5)
-        assertValue("2 * negative 3", equals: -6)
-        assertValue("2 + negative 3", equals: -1)
-        assertValue("2 plus 3 * 4", equals: 14)
-        assertValue("(2 plus 3) times 4", equals: 20)
-        assertValue("10 minus 2 times 3", equals: 4)
-        assertValue("24 divided by 3 divided by 2", equals: 4)
-        assertValue("2 times 3 times 4", equals: 24)
-        assertValue("24 over 3 over 2", equals: 4)
-        assertValue("10 mod 4 mod 3", equals: 2)
-        assertValue("2 plus 3 multiplied by 4", equals: 14)
+    func testWordBasedOperatorsAreRejected() {
+        let rejectedWordOperators = [
+            "2 plus 3",
+            "8 minus 3",
+            "2 times 3",
+            "2 multiplied by 3",
+            "8 divided by 2",
+            "8 over 2",
+            "10 mod 3",
+            "10 modulo 3",
+            "positive 5",
+            "negative 5",
+            "positive negative 5",
+            "negative negative 5",
+            "2 * negative 3",
+            "2 + negative 3",
+            "2 plus 3 * 4",
+            "(2 plus 3) times 4",
+            "10 minus 2 times 3",
+            "24 divided by 3 divided by 2",
+            "2 times 3 times 4",
+            "24 over 3 over 2",
+            "10 mod 4 mod 3",
+            "2 plus 3 multiplied by 4",
+            "2 PLUS 3",
+            "10 MINUS 4",
+            "3 TIMES 5",
+            "8 DIVIDED BY 2",
+            "8 OVER 2",
+            "10 MOD 3"
+        ]
+
+        for expression in rejectedWordOperators {
+            XCTAssertNil(
+                CalculatorExpressionEvaluator.evaluate(expression),
+                "Expected word-based operator expression to be rejected: \(expression.debugDescription)"
+            )
+        }
     }
 
     func testCaseInsensitiveKeywordsAndFunctions() {
@@ -484,12 +499,6 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("TAU", equals: 2 * Double.pi)
         assertValue("PHI", equals: (1 + sqrt(5)) / 2)
         assertValue("GOLDENRATIO", equals: (1 + sqrt(5)) / 2)
-        assertValue("2 PLUS 3", equals: 5)
-        assertValue("10 MINUS 4", equals: 6)
-        assertValue("3 TIMES 5", equals: 15)
-        assertValue("8 DIVIDED BY 2", equals: 4)
-        assertValue("8 OVER 2", equals: 4)
-        assertValue("10 MOD 3", equals: 1)
     }
 
     func testSingleArgumentFunctionsWithoutParentheses() {
@@ -569,7 +578,7 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("5.5 % 2", equals: 1.5)
         assertValue("mod(5.5, 2)", equals: 1.5)
         assertValue("modulo(5.5, 2)", equals: 1.5)
-        assertValue("7.5 mod 2.5", equals: 0)
+        assertValue("mod(7.5, 2.5)", equals: 0)
         assertValue("10 % -4", equals: 2)
         assertValue("-10 % 4", equals: -2)
         assertValue("-10 % -4", equals: -2)
