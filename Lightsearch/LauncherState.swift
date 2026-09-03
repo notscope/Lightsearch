@@ -422,6 +422,7 @@ final class LauncherState: ObservableObject {
     private let maximumFileResults = 50
     private let maximumApplicationResults = 20
     private let maximumSystemPreferenceResults = 20
+    private let maximumDefaultSystemPreferenceResults = 1
     @Published private(set) var systemPreferences: [SystemPreference] = []
 
     init(previewApplications: [InstalledApplication] = []) {
@@ -652,14 +653,11 @@ final class LauncherState: ObservableObject {
             results.append(.conversion(conversionResult))
         }
 
+        let settingsIntent = SystemPreferenceSearch.intent(for: query)
         let rankedPreferences = SystemPreferenceSearch.rankedResults(
             systemPreferences,
-            query: query
-        )
-        results.append(
-            contentsOf: rankedPreferences
-                .prefix(maximumSystemPreferenceResults)
-                .map { .systemPreference($0) }
+            query: settingsIntent.query,
+            includeSubitems: settingsIntent.isExplicit
         )
 
         var candidates = applications
@@ -677,15 +675,29 @@ final class LauncherState: ObservableObject {
 
         let ranked = ApplicationSearch.rankedResults(
             candidates,
-            query: query,
+            query: settingsIntent.isExplicit ? settingsIntent.query : query,
             history: launchHistory
         )
 
-        results.append(contentsOf: ranked.prefix(maximumApplicationResults).map { candidate in
+        let appResults = ranked.prefix(maximumApplicationResults).map { candidate in
             candidate.id == fileSearchActionID
-                ? .fileSearch
+                ? LauncherResult.fileSearch
                 : .application(candidate)
-        })
+        }
+        let preferenceLimit = settingsIntent.isExplicit
+            ? maximumSystemPreferenceResults
+            : maximumDefaultSystemPreferenceResults
+        let preferenceResults = rankedPreferences
+            .prefix(preferenceLimit)
+            .map { LauncherResult.systemPreference($0) }
+
+        if settingsIntent.isExplicit {
+            results.append(contentsOf: preferenceResults)
+            results.append(contentsOf: appResults)
+        } else {
+            results.append(contentsOf: appResults)
+            results.append(contentsOf: preferenceResults)
+        }
 
         return results
     }

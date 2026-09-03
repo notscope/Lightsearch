@@ -161,21 +161,61 @@ enum SystemPreferencesScanner {
     }
 }
 
+struct SystemPreferenceSearchIntent {
+    let query: String
+    let isExplicit: Bool
+}
+
 enum SystemPreferenceSearch {
     private struct ScoredPreference {
         let preference: SystemPreference
         let score: Double
     }
 
+    private static let explicitIntentTokens: Set<String> = [
+        "setting",
+        "preference"
+    ]
+
+    static func intent(for query: String) -> SystemPreferenceSearchIntent {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let queryTokens = tokens(from: trimmedQuery)
+        let isExplicit = queryTokens.contains(where: explicitIntentTokens.contains)
+
+        guard isExplicit else {
+            return SystemPreferenceSearchIntent(
+                query: trimmedQuery,
+                isExplicit: false
+            )
+        }
+
+        let searchTokens = queryTokens.filter {
+            !explicitIntentTokens.contains($0) && $0 != "system"
+        }
+        return SystemPreferenceSearchIntent(
+            query: searchTokens.joined(separator: " "),
+            isExplicit: true
+        )
+    }
+
     static func rankedResults(
         _ preferences: [SystemPreference],
-        query: String
+        query: String,
+        includeSubitems: Bool = false
     ) -> [SystemPreference] {
         let queryTokens = tokens(from: query)
-        guard !queryTokens.isEmpty else { return [] }
+        guard !queryTokens.isEmpty else {
+            return includeSubitems
+                ? preferences.filter { !$0.isSubitem }
+                : []
+        }
+
+        let candidates = includeSubitems
+            ? preferences
+            : preferences.filter { !$0.isSubitem }
         let queryText = queryTokens.joined(separator: " ")
 
-        return preferences
+        return candidates
             .compactMap { preference -> ScoredPreference? in
                 guard let score = score(
                     for: preference,
