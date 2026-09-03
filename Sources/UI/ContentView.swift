@@ -663,6 +663,35 @@ private struct SearchResultRow<Icon: View>: View {
     }
 }
 
+@MainActor
+final class WorkspaceIconCache {
+    static let shared = WorkspaceIconCache()
+
+    private let cache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 96
+        return cache
+    }()
+
+    private static let targetSize = NSSize(width: 34, height: 34)
+
+    func icon(forPath path: String) -> NSImage {
+        let key = path as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
+
+        let rawIcon = NSWorkspace.shared.icon(forFile: path)
+        rawIcon.size = Self.targetSize
+        cache.setObject(rawIcon, forKey: key)
+        return rawIcon
+    }
+
+    func clear() {
+        cache.removeAllObjects()
+    }
+}
+
 private struct WorkspaceIconView: View {
     let path: String
 
@@ -684,8 +713,9 @@ private struct WorkspaceIconView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .onAppear {
-            guard icon == nil else { return }
-            icon = NSWorkspace.shared.icon(forFile: path)
+            if icon == nil {
+                icon = WorkspaceIconCache.shared.icon(forPath: path)
+            }
         }
     }
 }

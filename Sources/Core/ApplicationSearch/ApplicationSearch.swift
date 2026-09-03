@@ -322,32 +322,50 @@ enum InstalledApplicationScanner {
             }
 
             for case let applicationURL as URL in enumerator {
-                guard applicationURL.pathExtension.caseInsensitiveCompare("app") == .orderedSame else {
-                    continue
+                autoreleasepool {
+                    guard applicationURL.pathExtension.caseInsensitiveCompare("app") == .orderedSame else {
+                        return
+                    }
+
+                    let values = try? applicationURL.resourceValues(forKeys: [.isDirectoryKey])
+                    guard values?.isDirectory == true else { return }
+
+                    // Prefer direct Info.plist parsing to avoid creating and retaining
+                    // hundreds of permanent CFBundle/NSBundle records in CoreFoundation.
+                    let plistURL = applicationURL.appendingPathComponent("Contents/Info.plist")
+                    var displayName: String?
+                    var bundleIdentifier: String?
+
+                    if let plistData = try? Data(contentsOf: plistURL, options: .mappedIfSafe),
+                       let plist = try? PropertyListSerialization.propertyList(
+                           from: plistData,
+                           options: [],
+                           format: nil
+                       ) as? [String: Any] {
+                        displayName = (plist["CFBundleDisplayName"] as? String)
+                            ?? (plist["CFBundleName"] as? String)
+                        bundleIdentifier = plist["CFBundleIdentifier"] as? String
+                    } else if let bundle = Bundle(url: applicationURL) {
+                        displayName = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+                            ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+                        bundleIdentifier = bundle.bundleIdentifier
+                    }
+
+                    let name = displayName ?? applicationURL.deletingPathExtension().lastPathComponent
+                    let standardizedPath = applicationURL.standardizedFileURL.path
+                    let identifier = bundleIdentifier ?? standardizedPath
+
+                    let application = InstalledApplication(
+                        id: identifier,
+                        name: name,
+                        bundleIdentifier: bundleIdentifier,
+                        path: standardizedPath
+                    )
+
+                    // A bundle can be visible in more than one application domain.
+                    // Keep the first stable result and avoid duplicate rows.
+                    applicationsByIdentifier[identifier] = applicationsByIdentifier[identifier] ?? application
                 }
-
-                let values = try? applicationURL.resourceValues(forKeys: [.isDirectoryKey])
-                guard values?.isDirectory == true else { continue }
-
-                let bundle = Bundle(url: applicationURL)
-                let name = (
-                    bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
-                ) ?? (
-                    bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String
-                ) ?? applicationURL.deletingPathExtension().lastPathComponent
-                let bundleIdentifier = bundle?.bundleIdentifier
-                let identifier = bundleIdentifier ?? applicationURL.standardizedFileURL.path
-
-                let application = InstalledApplication(
-                    id: identifier,
-                    name: name,
-                    bundleIdentifier: bundleIdentifier,
-                    path: applicationURL.standardizedFileURL.path
-                )
-
-                // A bundle can be visible in more than one application domain.
-                // Keep the first stable result and avoid duplicate rows.
-                applicationsByIdentifier[identifier] = applicationsByIdentifier[identifier] ?? application
             }
         }
 

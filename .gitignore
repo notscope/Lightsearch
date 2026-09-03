@@ -2,6 +2,7 @@
 build/
 build-*/
 DerivedData/
+.derivedData/
 
 # Per-user Xcode state
 xcuserdata/

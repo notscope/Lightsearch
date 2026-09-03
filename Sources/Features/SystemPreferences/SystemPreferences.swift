@@ -12,7 +12,7 @@ struct SystemPreference: Identifiable, Hashable, Sendable {
     let subtitle: String?
     let iconPath: String
     let urlString: String
-    let searchText: String
+    let searchableTokens: [String]
     let isSubitem: Bool
 }
 
@@ -24,30 +24,36 @@ enum SystemPreferencesScanner {
     }
 
     nonisolated static func scan() -> [SystemPreference] {
-        let rootURL = URL(
-            fileURLWithPath: "/System/Library/ExtensionKit/Extensions",
-            isDirectory: true
-        )
-        let fileManager = FileManager.default
+        autoreleasepool {
+            let rootURL = URL(
+                fileURLWithPath: "/System/Library/ExtensionKit/Extensions",
+                isDirectory: true
+            )
+            let fileManager = FileManager.default
 
-        guard let extensionURLs = try? fileManager.contentsOfDirectory(
-            at: rootURL,
-            includingPropertiesForKeys: nil,
-            options: [.skipsHiddenFiles]
-        ) else {
-            return []
-        }
-
-        return extensionURLs
-            .filter { $0.pathExtension == "appex" }
-            .flatMap(makePreferences(for:))
-            .sorted { lhs, rhs in
-                let titleComparison = lhs.title.localizedStandardCompare(rhs.title)
-                if titleComparison != .orderedSame {
-                    return titleComparison == .orderedAscending
-                }
-                return lhs.id < rhs.id
+            guard let extensionURLs = try? fileManager.contentsOfDirectory(
+                at: rootURL,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            ) else {
+                return []
             }
+
+            return extensionURLs
+                .filter { $0.pathExtension == "appex" }
+                .flatMap { url in
+                    autoreleasepool {
+                        makePreferences(for: url)
+                    }
+                }
+                .sorted { lhs, rhs in
+                    let titleComparison = lhs.title.localizedStandardCompare(rhs.title)
+                    if titleComparison != .orderedSame {
+                        return titleComparison == .orderedAscending
+                    }
+                    return lhs.id < rhs.id
+                }
+        }
     }
 
     nonisolated private static func makePreferences(
@@ -74,31 +80,38 @@ enum SystemPreferencesScanner {
         }
 
         let entries = loadSearchEntries(from: searchTermsPath)
-        let searchableParts = [parentTitle]
-            + entries.flatMap { [$0.title, $0.index] }
-        let searchableText = searchableParts.joined(separator: " ")
+        let iconPath = extensionURL.path
+        let parentTokens = SystemPreferenceSearch.tokens(from: parentTitle)
+        var parentSearchTokens = parentTokens
+        for entry in entries {
+            parentSearchTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.title))
+            parentSearchTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.index))
+        }
+
         let parent = SystemPreference(
             id: bundleIdentifier,
             title: parentTitle,
             subtitle: nil,
-            iconPath: extensionURL.path,
+            iconPath: iconPath,
             urlString: makeURLString(bundleIdentifier: bundleIdentifier),
-            searchText: searchableText,
+            searchableTokens: parentSearchTokens,
             isSubitem: false
         )
 
         let children = entries.enumerated().map { index, entry in
-            SystemPreference(
+            var childTokens = parentTokens
+            childTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.title))
+            childTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.index))
+            return SystemPreference(
                 id: "\(bundleIdentifier)#\(entry.sectionKey)#\(index)",
                 title: entry.title,
                 subtitle: parentTitle,
-                iconPath: extensionURL.path,
+                iconPath: iconPath,
                 urlString: makeURLString(
                     bundleIdentifier: bundleIdentifier,
                     sectionKey: entry.sectionKey
                 ),
-                searchText: [parentTitle, entry.title, entry.index]
-                    .joined(separator: " "),
+                searchableTokens: childTokens,
                 isSubitem: true
             )
         }
@@ -272,8 +285,7 @@ enum SystemPreferenceSearch {
             return titleScore
         }
 
-        let searchableTokens = tokens(from: preference.searchText)
-        if let keywordScore = tokenMatchScore(queryTokens, in: searchableTokens) {
+        if let keywordScore = tokenMatchScore(queryTokens, in: preference.searchableTokens) {
             return keywordScore - 100
         }
 
@@ -310,7 +322,7 @@ enum SystemPreferenceSearch {
         return min(Double(queryLength) / Double(fieldLength), 1)
     }
 
-    private static func tokens(from value: String) -> [String] {
+    nonisolated static func tokens(from value: String) -> [String] {
         let folded = value.folding(
             options: [.diacriticInsensitive, .caseInsensitive, .widthInsensitive],
             locale: .current
@@ -333,7 +345,7 @@ enum SystemPreferenceSearch {
         return tokens
     }
 
-    private static func normalizeToken(_ token: String) -> String {
+    nonisolated private static func normalizeToken(_ token: String) -> String {
         guard token.count > 4, token.hasSuffix("s"), !token.hasSuffix("ss") else {
             return token
         }

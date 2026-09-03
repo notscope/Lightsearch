@@ -5,6 +5,7 @@
 
 import AppKit
 import Carbon.HIToolbox
+import Darwin
 import SwiftUI
 
 @MainActor
@@ -150,6 +151,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
         panel.orderOut(nil)
         state.resetForPresentation()
         updatePanelSize(isExpanded: false)
+        malloc_zone_pressure_relief(nil, 0)
     }
 
     @objc func showFromMenu(_ sender: Any?) {
