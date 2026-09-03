@@ -126,27 +126,10 @@ enum CalculatorExpressionEvaluator {
                     index += 1
                     tokens.append(.power)
                 case "%":
-                    // A directly attached percent followed by whitespace,
-                    // punctuation, an implicit multiplier, or the end is
-                    // postfix percentage syntax (50% - 3, 50%(2+3)).
-                    // A spaced percent or one directly followed by an
-                    // operand without implicit multiplication remains
-                    // the binary modulo operator (10 % 3, 50%-3).
-                    let nextIndex = index + 1
-                    let nextCharacter = nextIndex < characters.count
-                        ? characters[nextIndex]
-                        : nil
-                    let isPostfix = !hadWhitespace && (
-                        nextCharacter == nil
-                            || nextCharacter?.isWhitespace == true
-                            || nextCharacter == ")"
-                            || nextCharacter == ","
-                            || nextCharacter == "%"
-                            || nextCharacter == "("
-                            || nextCharacter == "π"
-                            || nextCharacter == "τ"
-                            || (nextCharacter != nil && isIdentifierStart(nextCharacter!))
-                    )
+                    // An attached percent directly following an operand is
+                    // postfix percentage syntax (50%, 50%+3, 50%*2, 50%(2+3)).
+                    // A spaced percent is the binary remainder operator (10 % 3).
+                    let isPostfix = !hadWhitespace
                     index += 1
                     tokens.append(isPostfix ? .percentPostfix : .percent)
                 case "!":
@@ -261,13 +244,31 @@ enum CalculatorExpressionEvaluator {
 
             if allowsGrouping, index < characters.count, (characters[index] == "." || characters[index] == ",") {
                 let sep = characters[index]
-                if let (endIdx, _) = groupingMatch(
+                if let (endIdx, groupCount) = groupingMatch(
                     from: index,
                     separator: sep,
                     integerDigitCount: integerDigitCount
                 ) {
-                    index = endIdx
-                    usedGroupingSeparator = sep
+                    var isGrouping = false
+                    if groupCount > 1 {
+                        isGrouping = true
+                    } else {
+                        // Single separator followed by exactly 3 digits.
+                        // If followed by the opposite decimal separator and digits, it's grouping (e.g. 1.234,56 or 1,234.56).
+                        let otherSep: Character = (sep == "." ? "," : ".")
+                        let hasOppositeDecimal = (endIdx < characters.count && characters[endIdx] == otherSep &&
+                            endIdx + 1 < characters.count && isASCIIDigit(characters[endIdx + 1]))
+                        if hasOppositeDecimal {
+                            isGrouping = true
+                        } else if sep != decimalSeparator {
+                            isGrouping = true
+                        }
+                    }
+
+                    if isGrouping {
+                        index = endIdx
+                        usedGroupingSeparator = sep
+                    }
                 }
             }
 
@@ -550,6 +551,10 @@ enum CalculatorExpressionEvaluator {
             case let .identifier(name):
                 index += 1
 
+                if let constant = constant(named: name) {
+                    return constant
+                }
+
                 if consume(.leftParenthesis) {
                     var arguments: [Double] = []
                     if !consume(.rightParenthesis) {
@@ -564,10 +569,6 @@ enum CalculatorExpressionEvaluator {
                         }
                     }
                     return evaluateFunction(name, arguments: arguments)
-                }
-
-                if let constant = constant(named: name) {
-                    return constant
                 }
 
                 // Support the familiar calculator form "sqrt 9" as well as
@@ -800,24 +801,33 @@ enum CalculatorExpressionEvaluator {
             return checked(Darwin.pow(base, exponent))
         }
 
+        private static let maxExactInteger = 9_007_199_254_740_991.0 // 2^53 - 1
+
+        private func exactInteger(_ value: Double) -> Int64? {
+            guard value.isFinite,
+                  value.rounded(.towardZero) == value,
+                  abs(value) <= Self.maxExactInteger else {
+                return nil
+            }
+            return Int64(value)
+        }
+
         private func combinations(_ nVal: Double, _ rVal: Double) -> Double? {
-            guard nVal.isFinite, rVal.isFinite,
-                  nVal >= 0, rVal >= 0,
-                  nVal.rounded(.towardZero) == nVal,
-                  rVal.rounded(.towardZero) == rVal else {
+            guard let n64 = exactInteger(nVal),
+                  let r64 = exactInteger(rVal),
+                  n64 >= 0, r64 >= 0 else {
                 return nil
             }
 
-            let n = Int(min(nVal, Double(Int.max)))
-            let r = Int(min(rVal, Double(Int.max)))
-
-            if r > n {
+            if r64 > n64 {
                 return 0
             }
-            if r == 0 || r == n {
+            if r64 == 0 || r64 == n64 {
                 return 1
             }
 
+            let n = Int(n64)
+            let r = Int(r64)
             let k = min(r, n - r)
             var result = 1.0
             for i in 1...k {
@@ -828,23 +838,21 @@ enum CalculatorExpressionEvaluator {
         }
 
         private func permutations(_ nVal: Double, _ rVal: Double) -> Double? {
-            guard nVal.isFinite, rVal.isFinite,
-                  nVal >= 0, rVal >= 0,
-                  nVal.rounded(.towardZero) == nVal,
-                  rVal.rounded(.towardZero) == rVal else {
+            guard let n64 = exactInteger(nVal),
+                  let r64 = exactInteger(rVal),
+                  n64 >= 0, r64 >= 0 else {
                 return nil
             }
 
-            let n = Int(min(nVal, Double(Int.max)))
-            let r = Int(min(rVal, Double(Int.max)))
-
-            if r > n {
+            if r64 > n64 {
                 return 0
             }
-            if r == 0 {
+            if r64 == 0 {
                 return 1
             }
 
+            let n = Int(n64)
+            let r = Int(r64)
             var result = 1.0
             for i in 0..<r {
                 result *= Double(n - i)
@@ -858,16 +866,14 @@ enum CalculatorExpressionEvaluator {
             var result: Int64 = 0
 
             for (index, arg) in arguments.enumerated() {
-                guard arg.isFinite,
-                      arg.rounded(.towardZero) == arg,
-                      abs(arg) < Double(Int64.max) else {
+                guard let intVal = exactInteger(arg) else {
                     return nil
                 }
-                let intVal = abs(Int64(arg.rounded()))
+                let absVal = abs(intVal)
                 if index == 0 {
-                    result = intVal
+                    result = absVal
                 } else {
-                    result = gcd2(result, intVal)
+                    result = gcd2(result, absVal)
                 }
             }
 
@@ -887,29 +893,32 @@ enum CalculatorExpressionEvaluator {
 
         private func lcm(_ arguments: [Double]) -> Double? {
             guard arguments.count >= 2 else { return nil }
-            var result: Double = 0
+            var result: Int64 = 0
 
             for (index, arg) in arguments.enumerated() {
-                guard arg.isFinite,
-                      arg.rounded(.towardZero) == arg else {
+                guard let intVal = exactInteger(arg) else {
                     return nil
                 }
-                let absArg = abs(arg.rounded())
+                let absVal = abs(intVal)
                 if index == 0 {
-                    result = absArg
+                    result = absVal
                 } else {
-                    if result == 0 || absArg == 0 {
+                    if result == 0 || absVal == 0 {
                         result = 0
                     } else {
-                        let g = Double(gcd2(Int64(min(result.rounded(), Double(Int64.max - 1))), Int64(min(absArg, Double(Int64.max - 1)))))
+                        let g = gcd2(result, absVal)
                         guard g > 0 else { return nil }
-                        result = (result.rounded() / g) * absArg
-                        guard result.isFinite else { return nil }
+                        let divided = result / g
+                        let (product, overflow) = divided.multipliedReportingOverflow(by: absVal)
+                        guard !overflow, Double(product) <= Self.maxExactInteger else {
+                            return nil
+                        }
+                        result = product
                     }
                 }
             }
 
-            return checked(result.rounded())
+            return Double(result)
         }
 
         private func checked(_ value: Double) -> Double? {

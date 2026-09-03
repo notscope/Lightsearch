@@ -65,14 +65,21 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("10 + 7 % 4", equals: 13)
         assertValue("-10 % 3", equals: -1)
         assertValue("10 % -3", equals: 1)
+        assertValue("50 % -3", equals: 2)
+        assertValue("50 % (2 + 3)", equals: 0)
+
+        // Attached percent is always postfix percentage
         assertValue("50%", equals: 0.5)
         assertValue("50%%", equals: 0.005)
+        assertValue("50%+3", equals: 3.5)
+        assertValue("50%*2", equals: 1)
+        assertValue("50%/2", equals: 0.25)
+        assertValue("50%^2", equals: 0.25)
+        assertValue("50%²", equals: 0.25)
+        assertValue("50%-3", equals: -2.5)
         assertValue("50% - 3", equals: -2.5)
-        assertValue("50%-3", equals: 2)
-        assertValue("50 % -3", equals: 2)
         assertValue("100 * 25%", equals: 25)
         assertValue("50%(2 + 3)", equals: 2.5)
-        assertValue("50 % (2 + 3)", equals: 0)
         assertValue("50%pi", equals: 0.5 * Double.pi)
         assertValue("50%π", equals: 0.5 * Double.pi)
         assertValue("percent(25)", equals: 0.25)
@@ -88,6 +95,11 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("3sqrt(4)", equals: 6)
         assertValue("2 sqrt(9)", equals: 6)
         assertValue("2(3)(4)", equals: 24)
+        assertValue("pi(2)", equals: 2 * Double.pi)
+        assertValue("π(2)", equals: 2 * Double.pi)
+        assertValue("e(2)", equals: 2 * exp(1))
+        assertValue("tau(2)", equals: 4 * Double.pi)
+        assertValue("phi(2)", equals: 1 + sqrt(5))
     }
 
     func testConstants() {
@@ -813,6 +825,19 @@ final class CalculatorExpressionTests: XCTestCase {
         XCTAssertEqual(CalculatorExpressionEvaluator.evaluate(".5 + 1", locale: usLocale), 1.5)
         XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10,000,000.5 + 1", locale: usLocale), 10_000_001.5)
 
+        // Single separator with 3 trailing digits respects locale
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1.234 + 1", locale: usLocale), 2.234)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1,234 + 1", locale: usLocale), 1235)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1,234 + 1", locale: deLocale), 2.234)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1.234 + 1", locale: deLocale), 1235)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1,234 + 1", locale: idLocale), 2.234)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1.234 + 1", locale: idLocale), 1235)
+
+        // Single grouping with opposite decimal
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1,234.56 + 1", locale: usLocale), 1235.56)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1.234,56 + 1", locale: deLocale), 1235.56)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("1.234,56 + 1", locale: idLocale), 1235.56)
+
         // Function arguments disambiguation:
         XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("min(10, 5)", locale: usLocale), 5)
         XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("min(10; 5)", locale: idLocale), 5)
@@ -910,5 +935,92 @@ final class CalculatorExpressionTests: XCTestCase {
 
         XCTAssertNil(ConversionEngine.result(for: "½"))
         XCTAssertNil(ConversionEngine.result(for: "2½"))
+    }
+
+    func testIntegerSafetyBoundaries() {
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nCr(100000000000000000000, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nPr(100000000000000000000, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nCr(1e20, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nPr(1e20, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("lcm(100000000000000000000, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("lcm(1e20, 3)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("lcm(9223372036854775808, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("gcd(9007199254740993, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("lcm(9007199254740993, 2)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nCr(9007199254740993, 1)"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("nPr(9007199254740993, 1)"))
+
+        assertValue("gcd(9007199254740991, 1)", equals: 1)
+        assertValue("lcm(9007199254740991, 1)", equals: 9_007_199_254_740_991)
+    }
+
+    func testUnaryPowerEdgePrecedence() {
+        assertValue("2^-2", equals: 0.25)
+        assertValue("2^-2^2", equals: 1.0 / 16.0)
+        assertValue("-2^-2", equals: -0.25)
+        assertValue("(-2)^-2", equals: 0.25)
+        assertValue("-2^2^3", equals: -256)
+    }
+
+    func testSuperscriptEdgeCases() {
+        assertValue("2¹⁰", equals: 1024)
+        assertValue("2⁺²", equals: 4)
+        assertValue("2⁰", equals: 1)
+        assertValue("2⁻⁰", equals: 1)
+        assertValue("2⁻¹⁰", equals: 1.0 / 1024.0)
+
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("2⁻"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("2⁺"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("⁻²"))
+        XCTAssertNil(CalculatorExpressionEvaluator.evaluate("⁺²"))
+    }
+
+    func testLargeFlatExpressionDoesNotCrash() {
+        let expression = Array(repeating: "1", count: 5_000).joined(separator: "+")
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate(expression), 5_000)
+
+        let args = Array(repeating: "1", count: 1_000).joined(separator: ", ")
+        XCTAssertEqual(
+            CalculatorExpressionEvaluator.evaluate("sum(\(args))", locale: Locale(identifier: "en_US")),
+            1_000
+        )
+    }
+
+    func testAlgebraicInvariantsAndProperties() {
+        let pairs: [(Double, Double)] = [(2, 3), (7, 13), (100, 25), (0.5, 0.25)]
+        for (a, b) in pairs {
+            let sumAB = CalculatorExpressionEvaluator.evaluate("\(a) + \(b)")!
+            let sumBA = CalculatorExpressionEvaluator.evaluate("\(b) + \(a)")!
+            XCTAssertEqual(sumAB, sumBA)
+
+            let mulAB = CalculatorExpressionEvaluator.evaluate("\(a) * \(b)")!
+            let mulBA = CalculatorExpressionEvaluator.evaluate("\(b) * \(a)")!
+            XCTAssertEqual(mulAB, mulBA)
+
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a) + 0"), a)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a) * 1"), a)
+
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("--\(a)"), a)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("(\(a))"), a)
+
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)%"), a / 100)
+
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)^0"), 1)
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("\(a)^1"), a)
+        }
+
+        let intPairs: [(Int64, Int64)] = [(12, 18), (7, 13), (48, 180), (14, 35)]
+        for (a, b) in intPairs {
+            let gcdAB = CalculatorExpressionEvaluator.evaluate("gcd(\(a), \(b))")!
+            let gcdBA = CalculatorExpressionEvaluator.evaluate("gcd(\(b), \(a))")!
+            XCTAssertEqual(gcdAB, gcdBA)
+
+            let lcmAB = CalculatorExpressionEvaluator.evaluate("lcm(\(a), \(b))")!
+            let lcmBA = CalculatorExpressionEvaluator.evaluate("lcm(\(b), \(a))")!
+            XCTAssertEqual(lcmAB, lcmBA)
+
+            XCTAssertEqual(gcdAB * lcmAB, Double(a * b))
+            XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("gcd(\(a), 0)"), Double(a))
+        }
     }
 }
