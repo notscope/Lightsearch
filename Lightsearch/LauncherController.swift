@@ -35,13 +35,9 @@ final class LauncherController: NSObject, NSWindowDelegate {
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.acceptsMouseMovedEvents = false
-        panel.level = .screenSaver
-        panel.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .stationary,
-            .ignoresCycle
-        ]
+        panel.animationBehavior = .none
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
         // Inherit the app's effective appearance so Liquid Glass follows the
