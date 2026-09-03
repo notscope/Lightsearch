@@ -356,7 +356,7 @@ final class CalculatorExpressionTests: XCTestCase {
 
         for expression in invalidExpressions {
             XCTAssertNil(
-                CalculatorExpressionEvaluator.evaluate(expression),
+                CalculatorExpressionEvaluator.evaluate(expression, locale: Locale(identifier: "en_US")),
                 "Expected invalid expression to be rejected: \(expression.debugDescription)"
             )
         }
@@ -454,6 +454,9 @@ final class CalculatorExpressionTests: XCTestCase {
             "100",
             "1,000",
             "12,345.5",
+            "10.000.000",
+            "10,000,000",
+            "10,5",
             "0.5",
             ".5",
             "5.",
@@ -769,5 +772,53 @@ final class CalculatorExpressionTests: XCTestCase {
         assertValue("2³", equals: 8)
         assertValue("10⁻²", equals: 0.01)
         assertValue("7 × 10²", equals: 700)
+    }
+
+    func testLocaleAwareNumberParsingAndFormatting() {
+        let usLocale = Locale(identifier: "en_US")
+        let idLocale = Locale(identifier: "en_ID")
+        let deLocale = Locale(identifier: "de_DE")
+
+        // Millions with period grouping: 10.000.000
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10.000.000 + 5", locale: idLocale), 10_000_005)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10.000.000 + 5", locale: usLocale), 10_000_005)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10.000.000 + 5", locale: deLocale), 10_000_005)
+
+        // Millions with comma grouping: 10,000,000
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10,000,000 + 5", locale: usLocale), 10_000_005)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10,000,000 + 5", locale: idLocale), 10_000_005)
+
+        // Comma decimals in comma-decimal locales (en_ID, de_DE):
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10,5 + 2", locale: idLocale), 12.5)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10,5 + 2", locale: deLocale), 12.5)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate(",5 + 1", locale: idLocale), 1.5)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10.000.000,5 + 1", locale: idLocale), 10_000_001.5)
+
+        // Period decimals in period-decimal locales:
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10.5 + 2", locale: usLocale), 12.5)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate(".5 + 1", locale: usLocale), 1.5)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("10,000,000.5 + 1", locale: usLocale), 10_000_001.5)
+
+        // Function arguments disambiguation:
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("min(10, 5)", locale: usLocale), 5)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("min(10; 5)", locale: idLocale), 5)
+        XCTAssertEqual(CalculatorExpressionEvaluator.evaluate("min(10,5; 20,5)", locale: idLocale), 10.5)
+
+        // ConversionEngine results in different locales:
+        let idResult = ConversionEngine.result(for: "10.000.000 + 500", locale: idLocale)
+        XCTAssertEqual(idResult?.categoryTitle, "Calculator")
+        XCTAssertEqual(idResult?.outputValue, "10.000.500")
+
+        let usResult = ConversionEngine.result(for: "10,000,000 + 500", locale: usLocale)
+        XCTAssertEqual(usResult?.categoryTitle, "Calculator")
+        XCTAssertEqual(usResult?.outputValue, "10,000,500")
+
+        // Plain numbers are suppressed:
+        XCTAssertNil(ConversionEngine.result(for: "10.000.000", locale: idLocale))
+        XCTAssertNil(ConversionEngine.result(for: "10,000,000", locale: idLocale))
+        XCTAssertNil(ConversionEngine.result(for: "10.000.000", locale: usLocale))
+        XCTAssertNil(ConversionEngine.result(for: "10,000,000", locale: usLocale))
+        XCTAssertNil(ConversionEngine.result(for: "10,5", locale: idLocale))
+        XCTAssertNil(ConversionEngine.result(for: "10.5", locale: usLocale))
     }
 }

@@ -11,16 +11,40 @@ import Darwin
 enum CalculatorExpressionEvaluator {
     /// Evaluates a complete calculator expression. Invalid expressions and
     /// non-finite results are rejected instead of being partially evaluated.
-    static func evaluate(_ source: String) -> Double? {
+    static func evaluate(_ source: String, locale: Locale = .current) -> Double? {
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return nil
         }
 
-        var tokenizer = Tokenizer(source: source)
+        var tokenizer = Tokenizer(source: source, locale: locale)
         guard let tokens = tokenizer.tokenize() else { return nil }
 
         var parser = Parser(tokens: tokens)
         return parser.parse()
+    }
+
+    /// Checks whether an expression represents solely a single number literal.
+    static func isPlainNumber(_ source: String, locale: Locale = .current) -> Bool {
+        guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+
+        var tokenizer = Tokenizer(source: source, locale: locale)
+        guard let tokens = tokenizer.tokenize(), tokens.last == .end else {
+            return false
+        }
+
+        let contentTokens = tokens.dropLast()
+        if contentTokens.count == 1, case .number = contentTokens.first {
+            return true
+        }
+        if contentTokens.count == 2,
+           (contentTokens.first == .plus || contentTokens.first == .minus),
+           case .number = contentTokens.last {
+            return true
+        }
+
+        return false
     }
 
     private enum Token: Equatable {
@@ -42,10 +66,18 @@ enum CalculatorExpressionEvaluator {
 
     private struct Tokenizer {
         let characters: [Character]
+        let locale: Locale
+        let decimalSeparator: Character
+        let groupingSeparator: Character
         var index = 0
 
-        init(source: String) {
-            characters = Array(source)
+        init(source: String, locale: Locale = .current) {
+            self.characters = Array(source)
+            self.locale = locale
+            let dec = locale.decimalSeparator?.first ?? "."
+            let grp = locale.groupingSeparator?.first ?? ","
+            self.decimalSeparator = dec
+            self.groupingSeparator = grp
         }
 
         mutating func tokenize() -> [Token]? {
@@ -103,6 +135,14 @@ enum CalculatorExpressionEvaluator {
                     index += 1
                     tokens.append(.rightParenthesis)
                 case ",":
+                    if decimalSeparator == ",", index + 1 < characters.count, isASCIIDigit(characters[index + 1]),
+                       let number = readNumber() {
+                        tokens.append(.number(number))
+                    } else {
+                        index += 1
+                        tokens.append(.comma)
+                    }
+                case ";":
                     index += 1
                     tokens.append(.comma)
                 case "π":
@@ -187,24 +227,54 @@ enum CalculatorExpressionEvaluator {
                 index += 1
             }
 
-            if index < characters.count, characters[index] == ",",
-               let groupingEnd = groupingEnd(
-                   from: index,
-                   integerDigitCount: integerDigitCount
-               ) {
-                index = groupingEnd
-            }
+            var usedGroupingSeparator: Character?
 
-            var hasDigits = integerDigitCount > 0
-            if index < characters.count, characters[index] == "." {
-                index += 1
-                let fractionStart = index
-                while index < characters.count, isASCIIDigit(characters[index]) {
-                    index += 1
+            // Grouping separators cannot follow a leading zero (e.g. 0.125 or 0,125 is always decimal)
+            let allowsGrouping = (characters[start] != "0" || integerDigitCount > 1)
+
+            if allowsGrouping, index < characters.count, (characters[index] == "." || characters[index] == ",") {
+                let sep = characters[index]
+                if let (endIdx, _) = groupingMatch(
+                    from: index,
+                    separator: sep,
+                    integerDigitCount: integerDigitCount
+                ) {
+                    index = endIdx
+                    usedGroupingSeparator = sep
                 }
-                hasDigits = hasDigits || index > fractionStart
             }
 
+            var hasFraction = false
+            if index < characters.count {
+                let char = characters[index]
+                var isDecimal = false
+                if let grp = usedGroupingSeparator {
+                    if grp == "." && char == "," && (index + 1 < characters.count && isASCIIDigit(characters[index + 1])) {
+                        isDecimal = true
+                    } else if grp == "," && char == "." && (index + 1 < characters.count && isASCIIDigit(characters[index + 1])) {
+                        isDecimal = true
+                    }
+                } else {
+                    if char == "." {
+                        isDecimal = true
+                    } else if char == "," && (index + 1 < characters.count && isASCIIDigit(characters[index + 1])) {
+                        if decimalSeparator == "," {
+                            isDecimal = true
+                        }
+                    }
+                }
+
+                if isDecimal {
+                    index += 1
+                    let fractionStart = index
+                    while index < characters.count, isASCIIDigit(characters[index]) {
+                        index += 1
+                    }
+                    hasFraction = (index > fractionStart)
+                }
+            }
+
+            let hasDigits = integerDigitCount > 0 || hasFraction
             guard hasDigits else { return nil }
 
             // Only consume an exponent when it is complete. A directly
@@ -233,22 +303,30 @@ enum CalculatorExpressionEvaluator {
                 }
             }
 
-            let rawNumber = String(characters[start..<index])
-                .replacingOccurrences(of: ",", with: "")
+            var rawNumber = String(characters[start..<index])
+            if let grp = usedGroupingSeparator {
+                rawNumber = rawNumber.replacingOccurrences(of: String(grp), with: "")
+                rawNumber = rawNumber.replacingOccurrences(of: ",", with: ".")
+            } else {
+                rawNumber = rawNumber.replacingOccurrences(of: ",", with: ".")
+            }
+
             guard let value = Double(rawNumber), value.isFinite else { return nil }
             return value
         }
 
-        private func groupingEnd(
-            from commaIndex: Int,
+        private func groupingMatch(
+            from separatorIndex: Int,
+            separator: Character,
             integerDigitCount: Int
-        ) -> Int? {
+        ) -> (endIndex: Int, groupCount: Int)? {
             guard integerDigitCount >= 1, integerDigitCount <= 3 else {
                 return nil
             }
 
-            var cursor = commaIndex
-            while cursor < characters.count, characters[cursor] == "," {
+            var cursor = separatorIndex
+            var groupCount = 0
+            while cursor < characters.count, characters[cursor] == separator {
                 cursor += 1
                 for _ in 0..<3 {
                     guard cursor < characters.count, isASCIIDigit(characters[cursor]) else {
@@ -260,9 +338,11 @@ enum CalculatorExpressionEvaluator {
                 if cursor < characters.count, isASCIIDigit(characters[cursor]) {
                     return nil
                 }
+                groupCount += 1
             }
 
-            return cursor
+            guard groupCount > 0 else { return nil }
+            return (cursor, groupCount)
         }
 
         private func isIdentifierStart(_ character: Character) -> Bool {

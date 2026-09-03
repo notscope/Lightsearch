@@ -25,12 +25,13 @@ enum ConversionEngine {
     static func result(
         for query: String,
         now: Date = Date(),
-        resolvedTimeZone: TimeZone? = nil
+        resolvedTimeZone: TimeZone? = nil,
+        locale: Locale = .current
     ) -> ConversionResult? {
         let cleanedQuery = cleanQuery(query)
         guard !cleanedQuery.isEmpty else { return nil }
 
-        if let trigonometryResult = trigonometryResult(for: cleanedQuery) {
+        if let trigonometryResult = trigonometryResult(for: cleanedQuery, locale: locale) {
             return trigonometryResult
         }
 
@@ -42,11 +43,11 @@ enum ConversionEngine {
             return dateTimeResult
         }
 
-        if let measurementResult = measurementResult(for: cleanedQuery) {
+        if let measurementResult = measurementResult(for: cleanedQuery, locale: locale) {
             return measurementResult
         }
 
-        return calculatorResult(for: cleanedQuery)
+        return calculatorResult(for: cleanedQuery, locale: locale)
     }
 
     static func timeZoneLocation(for query: String) -> String? {
@@ -110,8 +111,8 @@ enum ConversionEngine {
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private static func trigonometryResult(for query: String) -> ConversionResult? {
-        let pattern = #"(?i)^\s*(sin|cos|tan)\s*(\(\s*)?([+-]?(?:(?:\d{1,3}(?:,\d{3})+)|(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?)\s*(°|degrees?|deg|radians?|rad)?\s*(\))?\s*$"#
+    private static func trigonometryResult(for query: String, locale: Locale = .current) -> ConversionResult? {
+        let pattern = #"(?i)^\s*(sin|cos|tan)\s*(\(\s*)?([+-]?(?:(?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+(?:[.,]\d*)?)|(?:[.,]\d+))(?:[eE][+-]?\d+)?)\s*(°|degrees?|deg|radians?|rad)?\s*(\))?\s*$"#
         guard let match = firstMatch(in: query, pattern: pattern),
               match.count >= 6,
               let function = TrigonometricFunction(rawValue: match[1].lowercased()) else {
@@ -122,8 +123,7 @@ enum ConversionEngine {
         let hasClosingParenthesis = !match[5].isEmpty
         guard hasOpeningParenthesis == hasClosingParenthesis else { return nil }
 
-        let numberText = match[3].replacingOccurrences(of: ",", with: "")
-        guard let value = Double(numberText) else { return nil }
+        guard let value = CalculatorExpressionEvaluator.evaluate(match[3], locale: locale) else { return nil }
 
         let angleUnit = match[4].lowercased()
         let usesRadians = ["rad", "radian", "radians"].contains(angleUnit)
@@ -132,11 +132,11 @@ enum ConversionEngine {
 
         let normalizedResult = abs(result) < 1e-12 ? 0 : result
         let inputUnit = usesRadians ? " rad" : "°"
-        let output = formatNumber(normalizedResult)
+        let output = formatNumber(normalizedResult, locale: locale)
 
         return ConversionResult(
             categoryTitle: "Trigonometry",
-            inputValue: "\(function.rawValue)(\(formatNumber(value))\(inputUnit))",
+            inputValue: "\(function.rawValue)(\(formatNumber(value, locale: locale))\(inputUnit))",
             inputLabel: function.displayName,
             outputValue: output,
             outputLabel: "Result",
@@ -144,9 +144,9 @@ enum ConversionEngine {
         )
     }
 
-    private static func measurementResult(for query: String) -> ConversionResult? {
+    private static func measurementResult(for query: String, locale: Locale = .current) -> ConversionResult? {
         let splitQuery = splitQuery(query)
-        let numericInput = parseNumericInput(splitQuery.source)
+        let numericInput = parseNumericInput(splitQuery.source, locale: locale)
             ?? parseImplicitNumericInput(
                 splitQuery.source,
                 defaultValue: splitQuery.target == nil ? nil : 1
@@ -195,8 +195,8 @@ enum ConversionEngine {
         let convertedValue = target.fromBase(source.toBase(numericInput.value))
         guard convertedValue.isFinite else { return nil }
 
-        let inputNumber = formatNumber(numericInput.value)
-        let outputNumber = formatNumber(convertedValue)
+        let inputNumber = formatNumber(numericInput.value, locale: locale)
+        let outputNumber = formatNumber(convertedValue, locale: locale)
         let outputText = "\(outputNumber) \(target.symbol)"
 
         return ConversionResult(
@@ -209,16 +209,16 @@ enum ConversionEngine {
         )
     }
 
-    private static func calculatorResult(for query: String) -> ConversionResult? {
-        guard !isPlainNumber(query) else {
+    private static func calculatorResult(for query: String, locale: Locale = .current) -> ConversionResult? {
+        guard !isPlainNumber(query, locale: locale) else {
             return nil
         }
 
-        guard let value = CalculatorExpressionEvaluator.evaluate(query) else {
+        guard let value = CalculatorExpressionEvaluator.evaluate(query, locale: locale) else {
             return nil
         }
 
-        let output = formatNumber(value == 0 ? 0 : value)
+        let output = formatNumber(value == 0 ? 0 : value, locale: locale)
         return ConversionResult(
             categoryTitle: "Calculator",
             inputValue: query,
@@ -229,7 +229,7 @@ enum ConversionEngine {
         )
     }
 
-    private static func isPlainNumber(_ text: String) -> Bool {
+    private static func isPlainNumber(_ text: String, locale: Locale = .current) -> Bool {
         var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         while trimmed.hasPrefix("(") && trimmed.hasSuffix(")") {
             var depth = 0
@@ -248,20 +248,19 @@ enum ConversionEngine {
             guard matchedAtEnd else { break }
             trimmed = String(trimmed.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        let stripped = trimmed.replacingOccurrences(of: ",", with: "")
-        let pattern = #"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$"#
-        return stripped.range(of: pattern, options: .regularExpression) != nil
+        return CalculatorExpressionEvaluator.isPlainNumber(trimmed, locale: locale)
     }
 
-    private static func parseNumericInput(_ text: String) -> NumericInput? {
-        let pattern = #"^\s*([+-]?(?:(?:\d{1,3}(?:,\d{3})+)|(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?)\s*(.*?)\s*$"#
+    private static func parseNumericInput(_ text: String, locale: Locale = .current) -> NumericInput? {
+        let pattern = #"^\s*([+-]?(?:(?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+(?:[.,]\d*)?)|(?:[.,]\d+))(?:[eE][+-]?\d+)?)\s*(.*?)\s*$"#
         guard let match = firstMatch(in: text, pattern: pattern),
               match.count >= 3 else {
             return nil
         }
 
-        let numberText = match[1].replacingOccurrences(of: ",", with: "")
-        guard let value = Double(numberText) else { return nil }
+        guard let value = CalculatorExpressionEvaluator.evaluate(match[1], locale: locale) else {
+            return nil
+        }
 
         let unitText = match[2].trimmingCharacters(in: .whitespacesAndNewlines)
         guard !unitText.isEmpty else { return nil }
@@ -978,13 +977,13 @@ enum ConversionEngine {
         return formatter.string(from: date)
     }
 
-    private static func formatNumber(_ value: Double) -> String {
+    private static func formatNumber(_ value: Double, locale: Locale = .current) -> String {
         if value != 0, abs(value) >= 1e15 || abs(value) < 1e-9 {
-            return formatScientificNumber(value)
+            return formatScientificNumber(value, locale: locale)
         }
 
         let formatter = NumberFormatter()
-        formatter.locale = Locale.current
+        formatter.locale = locale
         formatter.usesGroupingSeparator = true
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 10
@@ -992,9 +991,9 @@ enum ConversionEngine {
         return formatter.string(from: NSNumber(value: value)) ?? String(value)
     }
 
-    private static func formatScientificNumber(_ value: Double) -> String {
+    private static func formatScientificNumber(_ value: Double, locale: Locale = .current) -> String {
         let formatter = NumberFormatter()
-        formatter.locale = Locale.current
+        formatter.locale = locale
         formatter.numberStyle = .scientific
         formatter.usesSignificantDigits = true
         formatter.maximumSignificantDigits = 5
