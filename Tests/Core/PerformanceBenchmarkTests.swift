@@ -95,6 +95,12 @@ final class PerformanceBenchmarkTests: XCTestCase {
 
         let londonConversion = ConversionEngine.result(for: "time london")
         XCTAssertEqual(londonConversion?.inputLabel, "United Kingdom")
+
+        let drcConversion = ConversionEngine.result(for: "time drc")
+        XCTAssertEqual(drcConversion?.inputLabel, "Democratic Republic of the Congo")
+
+        let prcConversion = ConversionEngine.result(for: "time prc")
+        XCTAssertEqual(prcConversion?.inputLabel, "China")
     }
 
     func testSystemPreferencesScannerBenchmark() {

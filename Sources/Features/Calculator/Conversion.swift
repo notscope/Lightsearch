@@ -911,6 +911,13 @@ enum ConversionEngine {
             "nzst": "Pacific/Auckland",
             "nzdt": "Pacific/Auckland",
             "auckland": "Pacific/Auckland",
+            "drc": "Africa/Kinshasa",
+            "dr congo": "Africa/Kinshasa",
+            "congo": "Africa/Kinshasa",
+            "democratic republic of congo": "Africa/Kinshasa",
+            "democratic republic of the congo": "Africa/Kinshasa",
+            "prc": "Asia/Shanghai",
+            "china": "Asia/Shanghai",
             "local": TimeZone.current.identifier
         ]
 
@@ -969,7 +976,14 @@ enum ConversionEngine {
             "dubai": "United Arab Emirates",
             "toronto": "Canada",
             "vancouver": "Canada",
-            "canada": "Canada"
+            "canada": "Canada",
+            "drc": "Democratic Republic of the Congo",
+            "dr congo": "Democratic Republic of the Congo",
+            "congo": "Democratic Republic of the Congo",
+            "democratic republic of congo": "Democratic Republic of the Congo",
+            "democratic republic of the congo": "Democratic Republic of the Congo",
+            "prc": "China",
+            "china": "China"
         ]
 
         if let country = directLocationCountries[normalized] {
@@ -999,6 +1013,10 @@ enum ConversionEngine {
             return "Thailand"
         } else if id == "Asia/Vientiane" {
             return "Laos"
+        } else if id == "Africa/Kinshasa" || id == "Africa/Lubumbashi" {
+            return "Democratic Republic of the Congo"
+        } else if id == "Asia/Shanghai" || id == "Asia/Urumqi" || id == "Asia/Chongqing" || id == "Asia/Harbin" {
+            return "China"
         } else if id == "Australia/Sydney" || id == "Australia/Melbourne" || id == "Australia/Brisbane" || id == "Australia/Perth" {
             return "Australia"
         } else if id == "Pacific/Auckland" {
