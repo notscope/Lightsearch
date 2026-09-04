@@ -108,6 +108,12 @@ struct ContentView: View {
             let hasQuery = !newQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             onQueryChanged(hasQuery || state.isFileSearchPage)
         }
+        .onChange(of: state.applications) { _, applications in
+            WorkspaceIconCache.shared.prewarm(paths: applications.map(\.path))
+        }
+        .onAppear {
+            WorkspaceIconCache.shared.prewarm(paths: state.applications.map(\.path))
+        }
     }
 
     private var hasQuery: Bool {
@@ -673,32 +679,65 @@ private struct SearchResultRow<Icon: View>: View {
     }
 }
 
-@MainActor
-final class WorkspaceIconCache {
-    static let shared = WorkspaceIconCache()
-
-    private let cache: NSCache<NSString, NSImage> = {
+private final class IconStorage: @unchecked Sendable {
+    private nonisolated(unsafe) let cache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 96
         return cache
     }()
 
-    private static let targetSize = NSSize(width: 34, height: 34)
-
-    func icon(forPath path: String) -> NSImage {
+    nonisolated func icon(forPath path: String) -> NSImage {
         let key = path as NSString
         if let cached = cache.object(forKey: key) {
             return cached
         }
 
         let rawIcon = NSWorkspace.shared.icon(forFile: path)
-        rawIcon.size = Self.targetSize
+        rawIcon.size = NSSize(width: 34, height: 34)
         cache.setObject(rawIcon, forKey: key)
         return rawIcon
     }
 
-    func clear() {
+    nonisolated func clear() {
         cache.removeAllObjects()
+    }
+}
+
+@MainActor
+final class WorkspaceIconCache {
+    static let shared = WorkspaceIconCache()
+
+    private let storage = IconStorage()
+    private var prewarmingTask: Task<Void, Never>?
+
+    func icon(forPath path: String) -> NSImage {
+        storage.icon(forPath: path)
+    }
+
+    func prewarm(paths: [String]) {
+        prewarmingTask?.cancel()
+
+        var seenPaths = Set<String>()
+        let paths = paths.filter { path in
+            !path.isEmpty && seenPaths.insert(path).inserted
+        }
+        guard !paths.isEmpty else { return }
+
+        let storage = storage
+        prewarmingTask = Task.detached(priority: .utility) {
+            for path in paths {
+                guard !Task.isCancelled else { return }
+                autoreleasepool {
+                    _ = storage.icon(forPath: path)
+                }
+            }
+        }
+    }
+
+    func clear() {
+        prewarmingTask?.cancel()
+        prewarmingTask = nil
+        storage.clear()
     }
 }
 

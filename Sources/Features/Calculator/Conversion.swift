@@ -280,12 +280,22 @@ enum ConversionEngine {
     }
 
     private static func matchingUnits(for text: String) -> [ConversionUnitDefinition] {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let exactAliasMatches = ConversionUnitCatalog.all.filter { unit in
+            unit.aliases.contains(trimmedText)
+        }
         let normalizedText = normalizeUnit(text)
-        guard !normalizedText.isEmpty else { return [] }
+        guard !normalizedText.isEmpty else { return exactAliasMatches }
 
-        return ConversionUnitCatalog.all.filter { unit in
+        let normalizedMatches = ConversionUnitCatalog.all.filter { unit in
             unit.aliases.contains { normalizeUnit($0) == normalizedText }
         }
+
+        var matches = exactAliasMatches
+        for unit in normalizedMatches where !matches.contains(where: { $0.id == unit.id }) {
+            matches.append(unit)
+        }
+        return matches
     }
 
     private static func normalizeUnit(_ text: String) -> String {

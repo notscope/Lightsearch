@@ -7,40 +7,76 @@
 
 import Foundation
 import Darwin
+import os
 
 enum CalculatorExpressionEvaluator {
     /// Evaluates a complete calculator expression. Invalid expressions and
     /// non-finite results are rejected instead of being partially evaluated.
     static func evaluate(_ source: String, locale: Locale = .current) -> Double? {
+        let signpostID = CalculatorParserInstrumentation.beginEvaluation(
+            inputLength: source.count
+        )
+        var succeeded = false
+        defer {
+            CalculatorParserInstrumentation.endEvaluation(signpostID, succeeded: succeeded)
+        }
+
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return nil
         }
 
         var tokenizer = Tokenizer(source: source, locale: locale)
-        guard let tokens = tokenizer.tokenize() else { return nil }
+        let tokenizationSignpostID = CalculatorParserInstrumentation.beginTokenization(
+            inputLength: source.count
+        )
+        let tokenized = tokenizer.tokenize()
+        CalculatorParserInstrumentation.endTokenization(
+            tokenizationSignpostID,
+            tokenCount: tokenized?.count ?? 0,
+            succeeded: tokenized != nil
+        )
+        guard let tokens = tokenized else { return nil }
 
         var parser = Parser(tokens: tokens)
-        return parser.parse()
+        let parseSignpostID = CalculatorParserInstrumentation.beginParse(tokenCount: tokens.count)
+        let result = parser.parse()
+        CalculatorParserInstrumentation.endParse(
+            parseSignpostID,
+            succeeded: result != nil
+        )
+        succeeded = result != nil
+        return result
     }
 
     /// Checks whether an expression represents solely a single number literal.
     static func isPlainNumber(_ source: String, locale: Locale = .current) -> Bool {
+        let signpostID = CalculatorParserInstrumentation.beginPlainNumberCheck(
+            inputLength: source.count
+        )
+        var succeeded = false
+        defer {
+            CalculatorParserInstrumentation.endPlainNumberCheck(signpostID, succeeded: succeeded)
+        }
+
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return false
         }
 
         var tokenizer = Tokenizer(source: source, locale: locale)
-        guard let tokens = tokenizer.tokenize(), tokens.last == .end else {
+        let tokenized = tokenizer.tokenize()
+        guard let tokens = tokenized, tokens.last == .end else {
             return false
         }
 
         let contentTokens = tokens.dropLast()
         if contentTokens.count == 1, case .number = contentTokens.first {
+            succeeded = true
             return true
         }
         if contentTokens.count == 2,
            (contentTokens.first == .plus || contentTokens.first == .minus),
            case .number = contentTokens.last {
+            succeeded = true
             return true
         }
 
@@ -1012,5 +1048,84 @@ enum CalculatorExpressionEvaluator {
         private func checked(_ value: Double) -> Double? {
             value.isFinite ? value : nil
         }
+    }
+}
+
+private enum CalculatorParserInstrumentation {
+    private static let signposter = OSSignposter(
+        subsystem: "io.notscope.Lightsearch",
+        category: "CalculatorParser"
+    )
+
+    static func beginEvaluation(inputLength: Int) -> OSSignpostIntervalState? {
+        guard signposter.isEnabled else { return nil }
+        return signposter.beginInterval(
+            "Evaluate",
+            "inputLength=\(inputLength, privacy: .public)"
+        )
+    }
+
+    static func endEvaluation(_ state: OSSignpostIntervalState?, succeeded: Bool) {
+        guard let state else { return }
+        signposter.endInterval(
+            "Evaluate",
+            state,
+            "succeeded=\(succeeded ? 1 : 0, privacy: .public)"
+        )
+    }
+
+    static func beginTokenization(inputLength: Int) -> OSSignpostIntervalState? {
+        guard signposter.isEnabled else { return nil }
+        return signposter.beginInterval(
+            "Tokenize",
+            "inputLength=\(inputLength, privacy: .public)"
+        )
+    }
+
+    static func endTokenization(
+        _ state: OSSignpostIntervalState?,
+        tokenCount: Int,
+        succeeded: Bool
+    ) {
+        guard let state else { return }
+        signposter.endInterval(
+            "Tokenize",
+            state,
+            "tokenCount=\(tokenCount, privacy: .public) succeeded=\(succeeded ? 1 : 0, privacy: .public)"
+        )
+    }
+
+    static func beginParse(tokenCount: Int) -> OSSignpostIntervalState? {
+        guard signposter.isEnabled else { return nil }
+        return signposter.beginInterval(
+            "Parse",
+            "tokenCount=\(tokenCount, privacy: .public)"
+        )
+    }
+
+    static func endParse(_ state: OSSignpostIntervalState?, succeeded: Bool) {
+        guard let state else { return }
+        signposter.endInterval(
+            "Parse",
+            state,
+            "succeeded=\(succeeded ? 1 : 0, privacy: .public)"
+        )
+    }
+
+    static func beginPlainNumberCheck(inputLength: Int) -> OSSignpostIntervalState? {
+        guard signposter.isEnabled else { return nil }
+        return signposter.beginInterval(
+            "PlainNumberCheck",
+            "inputLength=\(inputLength, privacy: .public)"
+        )
+    }
+
+    static func endPlainNumberCheck(_ state: OSSignpostIntervalState?, succeeded: Bool) {
+        guard let state else { return }
+        signposter.endInterval(
+            "PlainNumberCheck",
+            state,
+            "succeeded=\(succeeded ? 1 : 0, privacy: .public)"
+        )
     }
 }

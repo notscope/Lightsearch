@@ -14,6 +14,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     private let hotKey = GlobalHotKey()
     private var localKeyMonitor: Any?
     private var searchField: NSSearchField?
+    private var focusRetryScheduled = false
 
     private let panel: LauncherPanel
 
@@ -122,15 +123,41 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     private func focusSearchField() {
+        focusSearchField(retryIfNeeded: true)
+    }
+
+    private func focusSearchField(retryIfNeeded: Bool) {
+        guard panel.isVisible else { return }
+
         // The search field is an AppKit control inside the SwiftUI hierarchy.
-        // Deferring one run-loop turn lets AppKit finish attaching it to the
-        // panel before requesting first responder status.
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.panel.isVisible else { return }
-            if let searchField = self.searchField {
-                self.panel.makeFirstResponder(searchField)
-                searchField.selectText(nil)
+        // It is normally ready by the time the panel is ordered front, so try
+        // immediately. If SwiftUI is still attaching it, retry once after the
+        // main queue has completed the current view update.
+        guard let searchField else {
+            if retryIfNeeded {
+                scheduleFocusRetry()
             }
+            return
+        }
+
+        guard panel.makeFirstResponder(searchField) else {
+            if retryIfNeeded {
+                scheduleFocusRetry()
+            }
+            return
+        }
+
+        searchField.selectText(nil)
+    }
+
+    private func scheduleFocusRetry() {
+        guard !focusRetryScheduled else { return }
+        focusRetryScheduled = true
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.focusRetryScheduled = false
+            self.focusSearchField(retryIfNeeded: false)
         }
     }
 
