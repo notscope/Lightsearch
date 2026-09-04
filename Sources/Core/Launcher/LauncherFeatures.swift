@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum LauncherFeatureResultPlacement {
+enum LauncherFeatureResultPlacement: Equatable {
     case beforeApplications
     case afterApplications
 }
@@ -54,15 +54,37 @@ extension LauncherSearchFeature {
 protocol LauncherPageFeature: AnyObject {
     var page: LauncherPage { get }
     var isActive: Bool { get }
+
+    func enter()
+    func exit()
+}
+
+@MainActor
+protocol FileSearchPageFeature: LauncherPageFeature {
     var fileResults: [SearchFile] { get }
     var visibleFileResults: [SearchFile] { get }
     var recentFiles: [SearchFile] { get }
     var isLoading: Bool { get }
     var resultCountLabel: String { get }
 
-    func enter()
-    func exit()
     func recordOpen(of file: SearchFile)
+}
+
+@MainActor
+protocol ClipboardPageFeature: LauncherPageFeature {
+    var entries: [ClipboardEntry] { get }
+    var visibleEntries: [ClipboardEntry] { get }
+    var filter: ClipboardFilter { get }
+    var isCapturing: Bool { get }
+    var resultCountLabel: String { get }
+
+    func setFilter(_ filter: ClipboardFilter)
+    func setCaptureEnabled(_ isEnabled: Bool)
+    func togglePin(for id: UUID)
+    func deleteEntry(withID id: UUID)
+    func clearHistory()
+    func writeToPasteboard(_ entry: ClipboardEntry) -> Bool
+    func recordColorPickerResult()
 }
 
 @MainActor
@@ -81,6 +103,8 @@ final class LauncherFeatureRegistry {
     init() {
         let enabledFeatures: [any LauncherSearchFeature] = [
             CalculatorFeature(),
+            ColorPickerFeature(),
+            ClipboardFeature(),
             FileSearchFeature(),
             SystemPreferencesFeature()
         ]
@@ -160,11 +184,15 @@ final class LauncherFeatureRegistry {
     }
 
     func recordOpen(of file: SearchFile) {
-        pageFeatures.first { $0.page == .files }?.recordOpen(of: file)
+        fileSearch?.recordOpen(of: file)
     }
 
-    var fileSearch: (any LauncherPageFeature)? {
-        pageFeatures.first { $0.page == .files }
+    var fileSearch: (any FileSearchPageFeature)? {
+        pageFeatures.compactMap { $0 as? any FileSearchPageFeature }.first
+    }
+
+    var clipboard: (any ClipboardPageFeature)? {
+        pageFeatures.compactMap { $0 as? any ClipboardPageFeature }.first
     }
 
     private func connectChangeCallbacks() {

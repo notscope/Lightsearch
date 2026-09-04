@@ -59,6 +59,10 @@ final class LauncherState: ObservableObject {
         page == .files
     }
 
+    var isClipboardPage: Bool {
+        page == .clipboard
+    }
+
     var fileResults: [SearchFile] {
         features.fileSearch?.fileResults ?? []
     }
@@ -78,6 +82,32 @@ final class LauncherState: ObservableObject {
     var isFileSearchLoading: Bool {
         features.fileSearch?.isLoading ?? false
     }
+
+    var clipboardEntries: [ClipboardEntry] {
+        features.clipboard?.entries ?? []
+    }
+
+    var visibleClipboardEntries: [ClipboardEntry] {
+        features.clipboard?.visibleEntries ?? []
+    }
+
+    var clipboardFilter: ClipboardFilter {
+        features.clipboard?.filter ?? .all
+    }
+
+    var isClipboardCapturing: Bool {
+        features.clipboard?.isCapturing ?? false
+    }
+
+    var clipboardResultCountLabel: String {
+        features.clipboard?.resultCountLabel ?? "0 entries"
+    }
+
+    var clipboardTargetApplicationName: String {
+        clipboardPasteTargetName ?? "your app"
+    }
+
+    private var clipboardPasteTargetName: String?
 
     func loadIfNeeded() {
         guard !hasStartedLoading else { return }
@@ -101,7 +131,14 @@ final class LauncherState: ObservableObject {
     }
 
     func moveSelection(by offset: Int) {
-        let count = isFileSearchPage ? visibleFileResults.count : visibleResults.count
+        let count: Int
+        if isFileSearchPage {
+            count = visibleFileResults.count
+        } else if isClipboardPage {
+            count = visibleClipboardEntries.count
+        } else {
+            count = visibleResults.count
+        }
         guard count > 0 else { return }
 
         let nextIndex = selectedIndex + offset
@@ -118,6 +155,12 @@ final class LauncherState: ObservableObject {
         guard page == .files else { return nil }
         guard visibleFileResults.indices.contains(selectedIndex) else { return nil }
         return visibleFileResults[selectedIndex]
+    }
+
+    func selectedClipboardEntry() -> ClipboardEntry? {
+        guard page == .clipboard else { return nil }
+        guard visibleClipboardEntries.indices.contains(selectedIndex) else { return nil }
+        return visibleClipboardEntries[selectedIndex]
     }
 
     func recordLaunch(of application: InstalledApplication) {
@@ -149,6 +192,58 @@ final class LauncherState: ObservableObject {
         page = .applications
         query = ""
         selectedIndex = 0
+    }
+
+    func enterClipboardHistory() {
+        guard features.canEnter(page: .clipboard) else { return }
+
+        page = .clipboard
+        features.enter(page: .clipboard)
+        query = ""
+        selectedIndex = 0
+    }
+
+    func exitClipboardHistory() {
+        features.exit(page: .clipboard)
+        page = .applications
+        query = ""
+        selectedIndex = 0
+    }
+
+    func setClipboardFilter(_ filter: ClipboardFilter) {
+        features.clipboard?.setFilter(filter)
+        selectedIndex = 0
+    }
+
+    func setClipboardCaptureEnabled(_ isEnabled: Bool) {
+        features.clipboard?.setCaptureEnabled(isEnabled)
+    }
+
+    func toggleClipboardPin(for id: UUID) {
+        features.clipboard?.togglePin(for: id)
+    }
+
+    func deleteClipboardEntry(withID id: UUID) {
+        features.clipboard?.deleteEntry(withID: id)
+        selectedIndex = min(selectedIndex, max(visibleClipboardEntries.count - 1, 0))
+    }
+
+    func clearClipboardHistory() {
+        features.clipboard?.clearHistory()
+        selectedIndex = 0
+    }
+
+    @discardableResult
+    func writeClipboardEntryToPasteboard(_ entry: ClipboardEntry) -> Bool {
+        features.clipboard?.writeToPasteboard(entry) ?? false
+    }
+
+    func recordColorPickerResult() {
+        features.clipboard?.recordColorPickerResult()
+    }
+
+    func setClipboardPasteTargetApplication(_ name: String?) {
+        clipboardPasteTargetName = name
     }
 
     private var displayedResults: [LauncherResult] {

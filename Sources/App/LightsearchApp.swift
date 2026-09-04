@@ -67,6 +67,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             target: launcherController
         )
 
+        let clipboardItem = NSMenuItem(
+            title: "Show Clipboard History",
+            action: #selector(LauncherController.showClipboardHistoryFromMenu(_:)),
+            keyEquivalent: ""
+        )
+        clipboardItem.target = launcherController
+        contextMenu.insertItem(clipboardItem, at: 1)
+
         self.contextMenu = contextMenu
         self.statusItem = statusItem
     }

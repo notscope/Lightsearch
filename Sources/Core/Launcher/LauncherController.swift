@@ -5,6 +5,7 @@
 
 import AppKit
 import Carbon.HIToolbox
+import CoreGraphics
 import Darwin
 import SwiftUI
 
@@ -15,6 +16,9 @@ final class LauncherController: NSObject, NSWindowDelegate {
     private var localKeyMonitor: Any?
     private var searchField: NSSearchField?
     private var focusRetryScheduled = false
+    private var pasteTargetApplication: NSRunningApplication?
+    private var isClipboardActionsPresented = false
+    private let colorPickerController = ColorPickerController()
 
     private let panel: LauncherPanel
 
@@ -61,6 +65,21 @@ final class LauncherController: NSObject, NSWindowDelegate {
                 onBackFromFileSearch: { [weak self] in
                     self?.returnToApplicationSearch()
                 },
+                onOpenClipboardHistory: { [weak self] in
+                    self?.enterClipboardHistory()
+                },
+                onBackFromClipboardHistory: { [weak self] in
+                    self?.returnToApplicationSearch()
+                },
+                onStartColorPicker: { [weak self] in
+                    self?.startColorPicker()
+                },
+                onPasteClipboardEntry: { [weak self] entry in
+                    self?.pasteClipboardEntry(entry)
+                },
+                onClipboardActionsPresentedChanged: { [weak self] isPresented in
+                    self?.isClipboardActionsPresented = isPresented
+                },
                 onOpenFile: { [weak self] file in
                     self?.open(file)
                 },
@@ -95,6 +114,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
 
     func stop() {
         hotKey.unregister()
+        colorPickerController.cancel()
         if let localKeyMonitor {
             NSEvent.removeMonitor(localKeyMonitor)
             self.localKeyMonitor = nil
@@ -110,6 +130,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     func show() {
+        rememberPasteTargetApplication()
         state.loadIfNeeded()
         state.resetForPresentation()
         updatePanelSize(isExpanded: false)
@@ -167,13 +188,32 @@ final class LauncherController: NSObject, NSWindowDelegate {
         focusSearchField()
     }
 
+    private func enterClipboardHistory() {
+        state.enterClipboardHistory()
+        updatePanelSize(isExpanded: true)
+        focusSearchField()
+    }
+
+    private func startColorPicker() {
+        hide()
+        colorPickerController.start { [weak self] color in
+            guard ClipboardPasteboardWriter.writeColor(color) else { return }
+            self?.state.recordColorPickerResult()
+        }
+    }
+
     private func returnToApplicationSearch() {
-        state.exitFileSearch()
+        if state.isClipboardPage {
+            state.exitClipboardHistory()
+        } else if state.isFileSearchPage {
+            state.exitFileSearch()
+        }
         updatePanelSize(isExpanded: false)
         focusSearchField()
     }
 
     func hide() {
+        colorPickerController.cancel()
         guard panel.isVisible else { return }
         panel.orderOut(nil)
         state.resetForPresentation()
@@ -183,6 +223,19 @@ final class LauncherController: NSObject, NSWindowDelegate {
 
     @objc func showFromMenu(_ sender: Any?) {
         show()
+    }
+
+    @objc func showClipboardHistoryFromMenu(_ sender: Any?) {
+        rememberPasteTargetApplication()
+        state.loadIfNeeded()
+        state.resetForPresentation()
+        enterClipboardHistory()
+        positionPanel()
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
+        focusSearchField()
     }
 
     private func open(_ application: InstalledApplication) {
@@ -217,6 +270,42 @@ final class LauncherController: NSObject, NSWindowDelegate {
         hide()
     }
 
+    private func pasteClipboardEntry(_ entry: ClipboardEntry) {
+        guard state.writeClipboardEntryToPasteboard(entry) else { return }
+
+        let targetApplication = pasteTargetApplication
+        hide()
+
+        guard let targetApplication,
+              !targetApplication.isTerminated,
+              targetApplication.processIdentifier != ProcessInfo.processInfo.processIdentifier else {
+            return
+        }
+
+        targetApplication.activate(options: [])
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak targetApplication] in
+            guard let targetApplication,
+                  !targetApplication.isTerminated,
+                  let keyDown = CGEvent(
+                    keyboardEventSource: nil,
+                    virtualKey: CGKeyCode(kVK_ANSI_V),
+                    keyDown: true
+                  ),
+                  let keyUp = CGEvent(
+                    keyboardEventSource: nil,
+                    virtualKey: CGKeyCode(kVK_ANSI_V),
+                    keyDown: false
+                  ) else {
+                return
+            }
+
+            keyDown.flags = .maskCommand
+            keyUp.flags = .maskCommand
+            keyDown.postToPid(targetApplication.processIdentifier)
+            keyUp.postToPid(targetApplication.processIdentifier)
+        }
+    }
+
     private func positionPanel() {
         let mouseLocation = NSEvent.mouseLocation
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) ?? NSScreen.main
@@ -230,17 +319,28 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     private func updatePanelSize(isExpanded: Bool) {
-        let targetHeight: CGFloat = isExpanded
-            ? LauncherMetrics.expandedHeight
-            : LauncherMetrics.collapsedHeight
-        guard abs(panel.frame.height - targetHeight) > 0.5 else { return }
+        let targetWidth: CGFloat
+        let targetHeight: CGFloat
+        if state.isClipboardPage {
+            targetWidth = LauncherMetrics.panelWidth
+            targetHeight = LauncherMetrics.expandedHeight
+        } else {
+            targetWidth = LauncherMetrics.panelWidth
+            targetHeight = isExpanded
+                ? LauncherMetrics.expandedHeight
+                : LauncherMetrics.collapsedHeight
+        }
+
+        guard abs(panel.frame.width - targetWidth) > 0.5
+            || abs(panel.frame.height - targetHeight) > 0.5 else {
+            return
+        }
 
         let currentFrame = panel.frame
-        // Keep the search field/top edge fixed; the results area grows below it.
         let resizedFrame = NSRect(
-            x: currentFrame.minX,
+            x: currentFrame.midX - targetWidth / 2,
             y: currentFrame.maxY - targetHeight,
-            width: LauncherMetrics.panelWidth,
+            width: targetWidth,
             height: targetHeight
         )
         panel.setFrame(resizedFrame, display: true, animate: false)
@@ -254,22 +354,38 @@ final class LauncherController: NSObject, NSWindowDelegate {
 
             switch event.keyCode {
             case UInt16(kVK_Escape):
-                if self.state.isFileSearchPage {
+                if self.isClipboardActionsPresented {
+                    return event
+                }
+                if self.state.isFileSearchPage || self.state.isClipboardPage {
                     self.returnToApplicationSearch()
                 } else {
                     self.hide()
                 }
                 return nil
             case UInt16(kVK_UpArrow):
+                if self.isClipboardActionsPresented {
+                    return event
+                }
                 self.state.moveSelection(by: -1)
                 return nil
             case UInt16(kVK_DownArrow):
+                if self.isClipboardActionsPresented {
+                    return event
+                }
                 self.state.moveSelection(by: 1)
                 return nil
             case UInt16(kVK_Return), UInt16(kVK_ANSI_KeypadEnter):
+                if self.isClipboardActionsPresented {
+                    return event
+                }
                 if self.state.isFileSearchPage {
                     if let file = self.state.selectedFile() {
                         self.open(file)
+                    }
+                } else if self.state.isClipboardPage {
+                    if let entry = self.state.selectedClipboardEntry() {
+                        self.pasteClipboardEntry(entry)
                     }
                 } else {
                     switch self.state.selectedResult() {
@@ -279,6 +395,10 @@ final class LauncherController: NSObject, NSWindowDelegate {
                         self.open(preference)
                     case .fileSearch:
                         self.enterFileSearch()
+                    case .clipboardHistory:
+                        self.enterClipboardHistory()
+                    case .colorPicker:
+                        self.startColorPicker()
                     case let .application(application):
                         self.open(application)
                     case nil:
@@ -296,6 +416,19 @@ final class LauncherController: NSObject, NSWindowDelegate {
         // Keep the panel visible while AppKit is moving focus between the
         // search field and its child controls. applicationDidResignActive is
         // the actual outside-click boundary.
+    }
+
+    private func rememberPasteTargetApplication() {
+        let currentProcessIdentifier = ProcessInfo.processInfo.processIdentifier
+        let frontmostApplication = NSWorkspace.shared.frontmostApplication
+        if frontmostApplication?.processIdentifier == currentProcessIdentifier {
+            pasteTargetApplication = nil
+        } else {
+            pasteTargetApplication = frontmostApplication
+        }
+        state.setClipboardPasteTargetApplication(
+            pasteTargetApplication?.localizedName
+        )
     }
 }
 

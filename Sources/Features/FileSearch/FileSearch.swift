@@ -187,7 +187,7 @@ final class FileSearchService: NSObject {
 }
 
 @MainActor
-final class FileSearchFeature: LauncherSearchFeature, LauncherPageFeature {
+final class FileSearchFeature: LauncherSearchFeature, FileSearchPageFeature {
     let identifier = "file-search"
     var onChange: (() -> Void)?
 

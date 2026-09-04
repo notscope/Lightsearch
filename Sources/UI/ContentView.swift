@@ -8,13 +8,20 @@ import AppKit
 import SwiftUI
 
 enum LauncherMetrics {
-    static let panelWidth: CGFloat = 680
+    static let panelWidth: CGFloat = 720
+    static let clipboardListWidth: CGFloat = 300
     static let collapsedHeight: CGFloat = 64
     static let dividerHeight: CGFloat = 1
     static let rowHeight: CGFloat = 54
     static let rowSpacing: CGFloat = 5
     static let conversionLabelHeight: CGFloat = 28
     static let horizontalInset: CGFloat = 12
+    static let searchBarHorizontalInset: CGFloat = 18
+    static let searchBarSpacing: CGFloat = 12
+    static let searchBarFieldHeight: CGFloat = 26
+    static let searchBarControlSize: CGFloat = 24
+    static let clipboardPreviewHeight: CGFloat = 200
+    static let clipboardFooterHeight: CGFloat = 40
     static let verticalInset: CGFloat = 12
     static let cornerRadius: CGFloat = 32
     static let visibleEntryCount: Int = 7
@@ -33,6 +40,46 @@ enum LauncherMetrics {
     }
 }
 
+struct LauncherSearchBar<LeadingContent: View, TrailingContent: View>: View {
+    @Binding var text: String
+
+    let placeholder: String
+    let onViewCreated: (NSSearchField) -> Void
+    let leadingContent: LeadingContent
+    let trailingContent: TrailingContent
+
+    init(
+        text: Binding<String>,
+        placeholder: String,
+        onViewCreated: @escaping (NSSearchField) -> Void,
+        @ViewBuilder leadingContent: () -> LeadingContent,
+        @ViewBuilder trailingContent: () -> TrailingContent
+    ) {
+        self._text = text
+        self.placeholder = placeholder
+        self.onViewCreated = onViewCreated
+        self.leadingContent = leadingContent()
+        self.trailingContent = trailingContent()
+    }
+
+    var body: some View {
+        HStack(spacing: LauncherMetrics.searchBarSpacing) {
+            leadingContent
+
+            SearchFieldRepresentable(
+                text: $text,
+                placeholder: placeholder,
+                onViewCreated: onViewCreated
+            )
+            .frame(height: LauncherMetrics.searchBarFieldHeight)
+
+            trailingContent
+        }
+        .padding(.horizontal, LauncherMetrics.searchBarHorizontalInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 struct ContentView: View {
     @ObservedObject var state: LauncherState
 
@@ -40,6 +87,11 @@ struct ContentView: View {
     let onOpenSystemPreference: (SystemPreference) -> Void
     let onOpenFileSearch: () -> Void
     let onBackFromFileSearch: () -> Void
+    let onOpenClipboardHistory: () -> Void
+    let onBackFromClipboardHistory: () -> Void
+    let onStartColorPicker: () -> Void
+    let onPasteClipboardEntry: (ClipboardEntry) -> Void
+    let onClipboardActionsPresentedChanged: (Bool) -> Void
     let onOpenFile: (SearchFile) -> Void
     let onCopyConversion: (ConversionResult) -> Void
     let onSearchFieldReady: (NSSearchField) -> Void
@@ -51,6 +103,11 @@ struct ContentView: View {
         onOpenSystemPreference: @escaping (SystemPreference) -> Void = { _ in },
         onOpenFileSearch: @escaping () -> Void = {},
         onBackFromFileSearch: @escaping () -> Void = {},
+        onOpenClipboardHistory: @escaping () -> Void = {},
+        onBackFromClipboardHistory: @escaping () -> Void = {},
+        onStartColorPicker: @escaping () -> Void = {},
+        onPasteClipboardEntry: @escaping (ClipboardEntry) -> Void = { _ in },
+        onClipboardActionsPresentedChanged: @escaping (Bool) -> Void = { _ in },
         onOpenFile: @escaping (SearchFile) -> Void = { _ in },
         onCopyConversion: @escaping (ConversionResult) -> Void = { _ in },
         onSearchFieldReady: @escaping (NSSearchField) -> Void = { _ in },
@@ -61,6 +118,11 @@ struct ContentView: View {
         self.onOpenSystemPreference = onOpenSystemPreference
         self.onOpenFileSearch = onOpenFileSearch
         self.onBackFromFileSearch = onBackFromFileSearch
+        self.onOpenClipboardHistory = onOpenClipboardHistory
+        self.onBackFromClipboardHistory = onBackFromClipboardHistory
+        self.onStartColorPicker = onStartColorPicker
+        self.onPasteClipboardEntry = onPasteClipboardEntry
+        self.onClipboardActionsPresentedChanged = onClipboardActionsPresentedChanged
         self.onOpenFile = onOpenFile
         self.onCopyConversion = onCopyConversion
         self.onSearchFieldReady = onSearchFieldReady
@@ -68,9 +130,54 @@ struct ContentView: View {
     }
 
     var body: some View {
+        Group {
+            if state.isClipboardPage {
+                ClipboardHistoryView(
+                    state: state,
+                    onBack: onBackFromClipboardHistory,
+                    onPaste: onPasteClipboardEntry,
+                    onSearchFieldReady: onSearchFieldReady,
+                    onActionsPresentedChanged: onClipboardActionsPresentedChanged
+                )
+            } else {
+                launcherContent
+            }
+        }
+        .frame(
+            width: LauncherMetrics.panelWidth,
+            height: state.isClipboardPage || showsExpandedContent
+                ? LauncherMetrics.expandedHeight
+                : LauncherMetrics.collapsedHeight
+        )
+        .systemThemedSurface(cornerRadius: LauncherMetrics.cornerRadius)
+        .clipShape(RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.8)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(
+            state.isFileSearchPage
+                ? "Lightsearch file search"
+                : state.isClipboardPage
+                    ? "Lightsearch clipboard history"
+                    : "Lightsearch application launcher"
+        )
+        .onChange(of: state.query) { _, newQuery in
+            let hasQuery = !newQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            onQueryChanged(hasQuery || state.isFileSearchPage || state.isClipboardPage)
+        }
+        .onChange(of: state.applications) { _, applications in
+            WorkspaceIconCache.shared.prewarm(paths: applications.map(\.path))
+        }
+        .onAppear {
+            WorkspaceIconCache.shared.prewarm(paths: state.applications.map(\.path))
+        }
+    }
+
+    private var launcherContent: some View {
         VStack(spacing: 0) {
             searchBar
-                .frame(maxWidth: .infinity)
                 .frame(height: LauncherMetrics.collapsedHeight)
 
             if showsExpandedContent {
@@ -88,32 +195,6 @@ struct ContentView: View {
                 .padding(.horizontal, LauncherMetrics.horizontalInset)
             }
         }
-        .frame(
-            width: LauncherMetrics.panelWidth,
-            height: showsExpandedContent ? LauncherMetrics.expandedHeight : LauncherMetrics.collapsedHeight
-        )
-        .systemThemedSurface(cornerRadius: LauncherMetrics.cornerRadius)
-        .clipShape(RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.8)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(
-            state.isFileSearchPage
-                ? "Lightsearch file search"
-                : "Lightsearch application launcher"
-        )
-        .onChange(of: state.query) { _, newQuery in
-            let hasQuery = !newQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            onQueryChanged(hasQuery || state.isFileSearchPage)
-        }
-        .onChange(of: state.applications) { _, applications in
-            WorkspaceIconCache.shared.prewarm(paths: applications.map(\.path))
-        }
-        .onAppear {
-            WorkspaceIconCache.shared.prewarm(paths: state.applications.map(\.path))
-        }
     }
 
     private var hasQuery: Bool {
@@ -125,35 +206,59 @@ struct ContentView: View {
     }
 
     private var searchBar: some View {
-        HStack(spacing: 12) {
-            if state.isFileSearchPage {
-                Button(action: onBackFromFileSearch) {
-                    Image(systemName: "chevron.left")
+        LauncherSearchBar(
+            text: $state.query,
+            placeholder: state.isFileSearchPage
+                ? "Search files and folders..."
+                : "Search for apps and commands...",
+            onViewCreated: onSearchFieldReady,
+            leadingContent: {
+                if state.isFileSearchPage {
+                    Button(action: onBackFromFileSearch) {
+                        Image(systemName: "chevron.left")
+                            .font(.title3.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .frame(
+                                width: LauncherMetrics.searchBarControlSize,
+                                height: LauncherMetrics.searchBarControlSize
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Back to applications")
+                    .help("Back to applications")
+                } else {
+                    Image(systemName: "magnifyingglass")
                         .font(.title3.weight(.medium))
                         .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
+                        .frame(
+                            width: LauncherMetrics.searchBarControlSize,
+                            height: LauncherMetrics.searchBarControlSize
+                        )
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Back to applications")
-                .help("Back to applications")
-            } else {
-                Image(systemName: "magnifyingglass")
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-            }
+            },
+            trailingContent: {
+                if state.isFileSearchPage {
+                    if !state.query.isEmpty {
+                        Button {
+                            state.query = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.body)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Clear search")
+                    }
 
-            SearchFieldRepresentable(
-                text: $state.query,
-                placeholder: state.isFileSearchPage
-                    ? "Search files and folders..."
-                    : "Search for apps and commands...",
-                onViewCreated: onSearchFieldReady
-            )
-            .frame(height: 26)
-
-            if state.isFileSearchPage {
-                if !state.query.isEmpty {
+                    Image(systemName: "folder")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .frame(
+                            width: LauncherMetrics.searchBarControlSize,
+                            height: LauncherMetrics.searchBarControlSize
+                        )
+                        .accessibilityHidden(true)
+                } else if !state.query.isEmpty {
                     Button {
                         state.query = ""
                     } label: {
@@ -164,26 +269,8 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .help("Clear search")
                 }
-
-                Image(systemName: "folder")
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-                    .accessibilityHidden(true)
-            } else if !state.query.isEmpty {
-                Button {
-                    state.query = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.body)
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-                .help("Clear search")
             }
-        }
-        .padding(.horizontal, 18)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        )
     }
 
     private var results: some View {
@@ -261,6 +348,42 @@ struct ContentView: View {
                 onOpen: {
                     state.selectedIndex = index
                     onOpenFileSearch()
+                }
+            )
+        case .clipboardHistory:
+            SearchResultRow(
+                title: "Clipboard History",
+                subtitle: "Search and paste copied items",
+                kind: "Action",
+                icon: Image(systemName: "clipboard")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.secondary),
+                isSelected: state.selectedIndex == index,
+                accessibilityHint: "Opens clipboard history",
+                onSelect: {
+                    state.selectedIndex = index
+                },
+                onOpen: {
+                    state.selectedIndex = index
+                    onOpenClipboardHistory()
+                }
+            )
+        case .colorPicker:
+            SearchResultRow(
+                title: "Color Picker",
+                subtitle: "Pick a color from your screen",
+                kind: "Action",
+                icon: Image(systemName: "eyedropper")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.secondary),
+                isSelected: state.selectedIndex == index,
+                accessibilityHint: "Picks a color from the screen",
+                onSelect: {
+                    state.selectedIndex = index
+                },
+                onOpen: {
+                    state.selectedIndex = index
+                    onStartColorPicker()
                 }
             )
         case let .application(application):
@@ -769,7 +892,7 @@ private struct WorkspaceIconView: View {
     }
 }
 
-private struct SearchFieldRepresentable: NSViewRepresentable {
+struct SearchFieldRepresentable: NSViewRepresentable {
     @Binding var text: String
 
     let placeholder: String
@@ -786,7 +909,7 @@ private struct SearchFieldRepresentable: NSViewRepresentable {
         searchField.isBordered = false
         searchField.drawsBackground = false
         searchField.focusRingType = .none
-        searchField.font = .preferredFont(forTextStyle: .title1)
+        searchField.font = .preferredFont(forTextStyle: .title2)
         searchField.controlSize = .large
         searchField.cell?.lineBreakMode = .byTruncatingTail
         if let searchCell = searchField.cell as? NSSearchFieldCell {

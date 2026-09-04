@@ -6,10 +6,13 @@
 import Foundation
 
 let fileSearchActionID = "io.notscope.Lightsearch.action.file-search"
+let clipboardHistoryActionID = "io.notscope.Lightsearch.action.clipboard-history"
+let colorPickerActionID = "io.notscope.Lightsearch.action.color-picker"
 
 enum LauncherPage: Equatable {
     case applications
     case files
+    case clipboard
 }
 
 enum LauncherResult: Identifiable {
@@ -17,6 +20,8 @@ enum LauncherResult: Identifiable {
     case systemPreference(SystemPreference)
     case application(InstalledApplication)
     case fileSearch
+    case clipboardHistory
+    case colorPicker
 
     var id: String {
         switch self {
@@ -28,6 +33,10 @@ enum LauncherResult: Identifiable {
             return application.id
         case .fileSearch:
             return fileSearchActionID
+        case .clipboardHistory:
+            return clipboardHistoryActionID
+        case .colorPicker:
+            return colorPickerActionID
         }
     }
 }
