@@ -210,7 +210,9 @@ struct ClipboardHistoryView: View {
                         .padding(.horizontal, 12)
                     }
                     .contentMargins(.vertical, LauncherMetrics.verticalInset, for: .scrollContent)
-                    .scrollIndicators(.never)
+                    .scrollIndicators(.visible)
+                    .scrollIndicatorsFlash(trigger: state.selectedIndex)
+                    .scrollIndicatorsFlash(onAppear: true)
                     .onChange(of: state.selectedIndex) { _, newIndex in
                         guard state.visibleClipboardEntries.indices.contains(newIndex) else { return }
                         if newIndex == 0, let topID = groupedEntries.first?.id {
