@@ -76,7 +76,7 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
                 if entry.kind == .image {
                     var fullData = entry.payload.imageData
                     if fullData == nil {
-                        fullData = historyStore.loadImageData(for: entry.id)
+                        fullData = historyStore.loadImageData(for: entry.id) ?? entry.payload.thumbnailData
                         if let fullData {
                             entry = entry.withImageData(fullData)
                             didUpdateAnyEntry = true
@@ -251,7 +251,7 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
 
     private func hydrateEntryIfNeeded(_ entry: ClipboardEntry) -> ClipboardEntry {
         if entry.kind == .image && entry.payload.imageData == nil {
-            if let fullData = historyStore.loadImageData(for: entry.id) {
+            if let fullData = historyStore.loadImageData(for: entry.id) ?? entry.payload.thumbnailData {
                 return entry.withImageData(fullData)
             }
         }

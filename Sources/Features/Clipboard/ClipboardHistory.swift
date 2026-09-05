@@ -926,9 +926,12 @@ enum ClipboardPasteboardWriter {
             item.setData(htmlData, forType: .html)
             didWrite = true
         }
-        if let imageData = entry.payload.imageData,
-           let imageType = entry.payload.imageType {
+        if let imageData = entry.payload.imageData ?? entry.payload.thumbnailData {
+            let imageType = entry.payload.imageType ?? ClipboardSnapshot.pngType.rawValue
             item.setData(imageData, forType: NSPasteboard.PasteboardType(imageType))
+            if let image = NSImage(data: imageData), let tiff = image.tiffRepresentation {
+                item.setData(tiff, forType: .tiff)
+            }
             didWrite = true
         }
         if let colorHex = entry.payload.colorHex,
@@ -959,7 +962,7 @@ enum ClipboardPasteboardWriter {
     }
 
     private static func temporaryImageFile(for entry: ClipboardEntry) -> URL? {
-        guard let imageData = entry.payload.imageData else { return nil }
+        guard let imageData = entry.payload.imageData ?? entry.payload.thumbnailData else { return nil }
 
         let fileExtension: String
         switch entry.payload.imageType?.lowercased() {

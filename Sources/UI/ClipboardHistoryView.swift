@@ -1082,7 +1082,9 @@ private struct ClipboardImagePreviewView: View {
     private func loadPreviewImage() async {
         isLoading = true
         let entryID = entry.id
-        let rawData = entry.payload.imageData ?? state.loadClipboardImageData(for: entryID)
+        let rawData = entry.payload.imageData
+            ?? state.loadClipboardImageData(for: entryID)
+            ?? entry.payload.thumbnailData
 
         guard let rawData else {
             isLoading = false
