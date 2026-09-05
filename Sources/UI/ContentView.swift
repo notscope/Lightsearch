@@ -285,32 +285,33 @@ struct ContentView: View {
         )
     }
 
+    @ViewBuilder
     private var results: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.vertical) {
-                LazyVStack(spacing: LauncherMetrics.rowSpacing) {
-                    if state.visibleResults.isEmpty {
-                        if state.isLoading && state.applications.isEmpty {
-                            loadingState
-                        } else {
-                            emptyState
-                        }
-                    } else {
+        if state.visibleResults.isEmpty {
+            if state.isLoading && state.applications.isEmpty {
+                loadingState
+            } else {
+                emptyState
+            }
+        } else {
+            ScrollViewReader { proxy in
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: LauncherMetrics.rowSpacing) {
                         ForEach(Array(state.visibleResults.enumerated()), id: \.element.id) { index, result in
                             resultRow(result, at: index)
                                 .id(result.id)
                         }
                     }
                 }
+                .contentMargins(.vertical, LauncherMetrics.verticalInset, for: .scrollContent)
+                .scrollIndicators(.never)
+                .onChange(of: state.selectedIndex) { _, newIndex in
+                    guard state.visibleResults.indices.contains(newIndex) else { return }
+                    proxy.scrollTo(state.visibleResults[newIndex].id, anchor: nil)
+                }
             }
-            .contentMargins(.vertical, LauncherMetrics.verticalInset, for: .scrollContent)
-            .scrollIndicators(.never)
-            .onChange(of: state.selectedIndex) { _, newIndex in
-                guard state.visibleResults.indices.contains(newIndex) else { return }
-                proxy.scrollTo(state.visibleResults[newIndex].id, anchor: nil)
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     @ViewBuilder
