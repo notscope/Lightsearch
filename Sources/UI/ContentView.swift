@@ -435,123 +435,127 @@ struct ContentView: View {
     }
 
     private var fileSearchResults: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Files")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(0.8)
-
-                Spacer()
-
-                if state.isFileSearchLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                        .scaleEffect(0.75)
-                } else {
-                    Text(state.fileResultCountLabel)
-                        .font(.subheadline)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .padding(.top, 12)
-
+        Group {
             if state.isFileSearchLoading && state.fileResults.isEmpty {
                 fileLoadingState
             } else if state.visibleFileResults.isEmpty {
                 fileEmptyState
             } else {
-                ScrollViewReader { proxy in
-                    ScrollView(.vertical) {
-                        LazyVStack(spacing: 5) {
-                            ForEach(Array(state.visibleFileResults.enumerated()), id: \.element.id) { index, file in
-                                SearchResultRow(
-                                    title: file.name,
-                                    subtitle: file.parentPath,
-                                    kind: file.isDirectory ? "Folder" : "File",
-                                    icon: WorkspaceIconView(path: file.path),
-                                    isSelected: state.selectedIndex == index,
-                                    shortcutNumber: index < LauncherMetrics.visibleEntryCount ? index + 1 : nil,
-                                    isCommandPressed: state.isCommandPressed,
-                                    accessibilityHint: file.isDirectory ? "Opens the folder" : "Opens the file",
-                                    onSelect: {
-                                        state.selectedIndex = index
-                                    },
-                                    onOpen: {
-                                        state.selectedIndex = index
-                                        onOpenFile(file)
-                                    }
-                                )
-                                .id(file.id)
-                            }
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Files")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(0.8)
+
+                        Spacer()
+
+                        if state.isFileSearchLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(0.75)
+                        } else {
+                            Text(state.fileResultCountLabel)
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
                         }
                     }
-                    .contentMargins(.bottom, 12, for: .scrollContent)
-                    .scrollIndicators(.never)
-                    .onChange(of: state.selectedIndex) { _, newIndex in
-                        guard state.visibleFileResults.indices.contains(newIndex) else { return }
-                        proxy.scrollTo(state.visibleFileResults[newIndex].id, anchor: nil)
+                    .padding(.top, 12)
+
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical) {
+                            LazyVStack(spacing: 5) {
+                                ForEach(Array(state.visibleFileResults.enumerated()), id: \.element.id) { index, file in
+                                    SearchResultRow(
+                                        title: file.name,
+                                        subtitle: file.parentPath,
+                                        kind: file.isDirectory ? "Folder" : "File",
+                                        icon: WorkspaceIconView(path: file.path),
+                                        isSelected: state.selectedIndex == index,
+                                        shortcutNumber: index < LauncherMetrics.visibleEntryCount ? index + 1 : nil,
+                                        isCommandPressed: state.isCommandPressed,
+                                        accessibilityHint: file.isDirectory ? "Opens the folder" : "Opens the file",
+                                        onSelect: {
+                                            state.selectedIndex = index
+                                        },
+                                        onOpen: {
+                                            state.selectedIndex = index
+                                            onOpenFile(file)
+                                        }
+                                    )
+                                    .id(file.id)
+                                }
+                            }
+                        }
+                        .contentMargins(.bottom, 12, for: .scrollContent)
+                        .scrollIndicators(.never)
+                        .onChange(of: state.selectedIndex) { _, newIndex in
+                            guard state.visibleFileResults.indices.contains(newIndex) else { return }
+                            proxy.scrollTo(state.visibleFileResults[newIndex].id, anchor: nil)
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var recentFileResults: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Recent files")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(0.8)
-
-                Spacer()
-            }
-            .padding(.top, 12)
-
+        Group {
             if state.recentFiles.isEmpty {
                 recentFilesEmptyState
             } else {
-                ScrollViewReader { proxy in
-                    ScrollView(.vertical) {
-                        LazyVGrid(
-                            columns: Array(
-                                repeating: GridItem(.flexible(), spacing: 8),
-                                count: 3
-                            ),
-                            spacing: 8
-                        ) {
-                            ForEach(Array(state.visibleFileResults.enumerated()), id: \.element.id) { index, file in
-                                RecentFileCard(
-                                    file: file,
-                                    isSelected: state.selectedIndex == index,
-                                    shortcutNumber: index < LauncherMetrics.visibleEntryCount ? index + 1 : nil,
-                                    isCommandPressed: state.isCommandPressed,
-                                    onSelect: {
-                                        state.selectedIndex = index
-                                    },
-                                    onOpen: {
-                                        state.selectedIndex = index
-                                        onOpenFile(file)
-                                    }
-                                )
-                                .id(file.id)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Recent files")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(0.8)
+
+                        Spacer()
+                    }
+                    .padding(.top, 12)
+
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical) {
+                            LazyVGrid(
+                                columns: Array(
+                                    repeating: GridItem(.flexible(), spacing: 8),
+                                    count: 3
+                                ),
+                                spacing: 8
+                            ) {
+                                ForEach(Array(state.visibleFileResults.enumerated()), id: \.element.id) { index, file in
+                                    RecentFileCard(
+                                        file: file,
+                                        isSelected: state.selectedIndex == index,
+                                        shortcutNumber: index < LauncherMetrics.visibleEntryCount ? index + 1 : nil,
+                                        isCommandPressed: state.isCommandPressed,
+                                        onSelect: {
+                                            state.selectedIndex = index
+                                        },
+                                        onOpen: {
+                                            state.selectedIndex = index
+                                            onOpenFile(file)
+                                        }
+                                    )
+                                    .id(file.id)
+                                }
                             }
                         }
-                    }
-                    .contentMargins(.bottom, 12, for: .scrollContent)
-                    .scrollIndicators(.never)
-                    .onChange(of: state.selectedIndex) { _, newIndex in
-                        guard state.visibleFileResults.indices.contains(newIndex) else { return }
-                        proxy.scrollTo(state.visibleFileResults[newIndex].id, anchor: nil)
+                        .contentMargins(.bottom, 12, for: .scrollContent)
+                        .scrollIndicators(.never)
+                        .onChange(of: state.selectedIndex) { _, newIndex in
+                            guard state.visibleFileResults.indices.contains(newIndex) else { return }
+                            proxy.scrollTo(state.visibleFileResults[newIndex].id, anchor: nil)
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var loadingState: some View {
@@ -577,43 +581,51 @@ struct ContentView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "square.grid.2x2")
-                .font(.title2.weight(.medium))
-                .foregroundStyle(.secondary)
+        let parsed = LauncherQueryParser.parse(state.query)
+        let image: String
+        let title: String
+        let subtitle: String
 
-            Text("No applications found")
-                .font(.headline)
+        switch parsed.filter {
+        case .apps:
+            image = "square.grid.2x2"
+            title = "No applications found"
+            subtitle = "Check your spelling or try a different search term"
+        case .settings:
+            image = "gearshape"
+            title = "No settings found"
+            subtitle = "No system settings match your search"
+        case .actions:
+            image = "command"
+            title = "No actions found"
+            subtitle = "No launcher actions match your search"
+        case nil:
+            image = "magnifyingglass"
+            title = "No results found"
+            subtitle = "Check your spelling or try a different search term"
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        return PlaceholderStateView(
+            systemImage: image,
+            title: title,
+            subtitle: subtitle
+        )
     }
 
     private var fileEmptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.title2.weight(.medium))
-                .foregroundStyle(.secondary)
-
-            Text("No files found")
-                .font(.headline)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        PlaceholderStateView(
+            systemImage: "doc.text.magnifyingglass",
+            title: "No files found",
+            subtitle: "Check your spelling or try searching in another location"
+        )
     }
 
     private var recentFilesEmptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "clock")
-                .font(.title2.weight(.medium))
-                .foregroundStyle(.secondary)
-
-            Text("No recent files")
-                .font(.headline)
-
-            Text("Files you open will appear here")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        PlaceholderStateView(
+            systemImage: "clock",
+            title: "No recent files",
+            subtitle: "Files you open will appear here"
+        )
     }
 
 }

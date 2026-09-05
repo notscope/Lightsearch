@@ -753,23 +753,15 @@ struct ClipboardHistoryView: View {
     }
 
     private var clipboardEmptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "clipboard")
-                .font(.title2.weight(.medium))
-                .foregroundStyle(.secondary)
-            Text(state.query.isEmpty ? "No clipboard entries" : "No matching entries")
-                .font(.headline)
-            Text(
-                state.isClipboardCapturing
+        PlaceholderStateView(
+            systemImage: "clipboard",
+            title: state.query.isEmpty ? "No clipboard entries" : "No matching entries",
+            subtitle: state.query.isEmpty
+                ? (state.isClipboardCapturing
                     ? "Copied text, links, images, files, and colors will appear here"
-                    : "Capture is paused"
-            )
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-        }
-        .padding(28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    : "Clipboard capture is paused")
+                : "Check your spelling or try a different search term"
+        )
     }
 
 
