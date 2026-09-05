@@ -69,11 +69,27 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
                     updatedEntry.source = .lightsearch
                     return updatedEntry
                 }
-            entries = loadedEntries
+
+            var migratedEntries: [ClipboardEntry] = []
+            var didMigrateAnyImage = false
+            for entry in loadedEntries {
+                if entry.kind == .image, let fullData = entry.payload.imageData {
+                    historyStore.saveImageData(fullData, for: entry.id)
+                    let thumbnail = entry.payload.thumbnailData ?? ClipboardThumbnailGenerator.makeThumbnail(from: fullData)
+                    migratedEntries.append(entry.withoutImageData(thumbnailData: thumbnail))
+                    didMigrateAnyImage = true
+                } else {
+                    migratedEntries.append(entry)
+                }
+            }
+
+            entries = migratedEntries
             trimHistoryToLimits()
-            if entries != archive.entries {
+            if didMigrateAnyImage || entries != archive.entries {
                 persist()
             }
+            let validIDs = Set(entries.map(\.id))
+            historyStore.pruneImageData(keeping: validIDs)
         }
         lastChangeCount = NSPasteboard.general.changeCount
         startMonitoring()
@@ -191,6 +207,7 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
         let originalCount = entries.count
         entries.removeAll { $0.id == id }
         guard entries.count != originalCount else { return }
+        historyStore.deleteImageData(for: id)
         persist()
         onChange?()
     }
@@ -204,11 +221,30 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
 
     @discardableResult
     func writeToPasteboard(_ entry: ClipboardEntry) -> Bool {
-        let didWrite = ClipboardPasteboardWriter.write(entry)
+        let hydratedEntry = hydrateEntryIfNeeded(entry)
+        let didWrite = ClipboardPasteboardWriter.write(hydratedEntry)
         if didWrite {
             lastChangeCount = NSPasteboard.general.changeCount
         }
         return didWrite
+    }
+
+    func loadImageData(for id: UUID) -> Data? {
+        historyStore.loadImageData(for: id)
+    }
+
+    func makeDragPayload(for entry: ClipboardEntry) -> ClipboardDragPayload? {
+        let hydratedEntry = hydrateEntryIfNeeded(entry)
+        return ClipboardPasteboardWriter.makeDragPayload(for: hydratedEntry)
+    }
+
+    private func hydrateEntryIfNeeded(_ entry: ClipboardEntry) -> ClipboardEntry {
+        if entry.kind == .image && entry.payload.imageData == nil {
+            if let fullData = historyStore.loadImageData(for: entry.id) {
+                return entry.withImageData(fullData)
+            }
+        }
+        return entry
     }
 
     func recordColorPickerResult() {
@@ -245,17 +281,28 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
         guard isCapturing else { return }
 
         let source = Self.currentSourceApplication()
-        guard let snapshot = ClipboardSnapshot.read(
-            from: pasteboard,
-            source: source
-        ) else {
-            return
+        autoreleasepool {
+            guard let snapshot = ClipboardSnapshot.read(
+                from: pasteboard,
+                source: source
+            ) else {
+                return
+            }
+            ingest(snapshot)
         }
-        ingest(snapshot)
     }
 
     func ingest(_ snapshot: ClipboardSnapshot) {
-        guard isCapturing, let newEntry = snapshot.makeEntry() else { return }
+        guard isCapturing, let rawEntry = snapshot.makeEntry() else { return }
+
+        let newEntry: ClipboardEntry
+        if rawEntry.kind == .image, let fullData = rawEntry.payload.imageData {
+            historyStore.saveImageData(fullData, for: rawEntry.id)
+            let thumbnail = rawEntry.payload.thumbnailData ?? ClipboardThumbnailGenerator.makeThumbnail(from: fullData)
+            newEntry = rawEntry.withoutImageData(thumbnailData: thumbnail)
+        } else {
+            newEntry = rawEntry
+        }
 
         if let existingIndex = entries.firstIndex(where: {
             $0.fingerprint == newEntry.fingerprint
@@ -333,7 +380,12 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
             byteCount += entry.byteCount
         }
 
+        let previousCount = entries.count
         entries = retained
+        if retained.count < previousCount {
+            let retainedIDs = Set(entries.map(\.id))
+            historyStore.pruneImageData(keeping: retainedIDs)
+        }
     }
 
     private static func currentSourceApplication() -> ClipboardSource? {

@@ -251,6 +251,14 @@ final class LauncherState: ObservableObject {
         clipboardPasteTargetName = name
     }
 
+    func loadClipboardImageData(for id: UUID) -> Data? {
+        features.clipboard?.loadImageData(for: id)
+    }
+
+    func makeClipboardDragPayload(for entry: ClipboardEntry) -> ClipboardDragPayload? {
+        features.clipboard?.makeDragPayload(for: entry)
+    }
+
     private var displayedResults: [LauncherResult] {
         var results = filteredLauncherResults
         let parsed = LauncherQueryParser.parse(query)

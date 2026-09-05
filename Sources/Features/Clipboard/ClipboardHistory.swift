@@ -74,6 +74,28 @@ enum ClipboardColorCodec {
     }
 }
 
+enum ClipboardThumbnailGenerator {
+    nonisolated static func makeThumbnail(
+        from data: Data,
+        maxPixelSize: Int = 160
+    ) -> Data? {
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceShouldCacheImmediately: true
+        ]
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let cgThumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return nil
+        }
+
+        let bitmapRep = NSBitmapImageRep(cgImage: cgThumbnail)
+        return bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: 0.82])
+            ?? bitmapRep.representation(using: .png, properties: [:])
+    }
+}
+
 enum ClipboardEntryKind: String, CaseIterable, Codable, Identifiable, Sendable {
     case text
     case link
@@ -181,9 +203,72 @@ struct ClipboardPayload: Codable, Hashable, Sendable {
     let rtfData: Data?
     let htmlData: Data?
     let imageData: Data?
+    let thumbnailData: Data?
     let imageType: String?
     let colorHex: String?
     let filePaths: [String]
+
+    init(
+        plainText: String? = nil,
+        urlData: Data? = nil,
+        rtfData: Data? = nil,
+        htmlData: Data? = nil,
+        imageData: Data? = nil,
+        thumbnailData: Data? = nil,
+        imageType: String? = nil,
+        colorHex: String? = nil,
+        filePaths: [String] = []
+    ) {
+        self.plainText = plainText
+        self.urlData = urlData
+        self.rtfData = rtfData
+        self.htmlData = htmlData
+        self.imageData = imageData
+        self.thumbnailData = thumbnailData
+        self.imageType = imageType
+        self.colorHex = colorHex
+        self.filePaths = filePaths
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case plainText
+        case urlData
+        case rtfData
+        case htmlData
+        case imageData
+        case thumbnailData
+        case imageType
+        case colorHex
+        case filePaths
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        plainText = try container.decodeIfPresent(String.self, forKey: .plainText)
+        urlData = try container.decodeIfPresent(Data.self, forKey: .urlData)
+        rtfData = try container.decodeIfPresent(Data.self, forKey: .rtfData)
+        htmlData = try container.decodeIfPresent(Data.self, forKey: .htmlData)
+        imageData = try container.decodeIfPresent(Data.self, forKey: .imageData)
+        thumbnailData = try container.decodeIfPresent(Data.self, forKey: .thumbnailData)
+        imageType = try container.decodeIfPresent(String.self, forKey: .imageType)
+        colorHex = try container.decodeIfPresent(String.self, forKey: .colorHex)
+        filePaths = try container.decodeIfPresent([String].self, forKey: .filePaths) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(plainText, forKey: .plainText)
+        try container.encodeIfPresent(urlData, forKey: .urlData)
+        try container.encodeIfPresent(rtfData, forKey: .rtfData)
+        try container.encodeIfPresent(htmlData, forKey: .htmlData)
+        try container.encodeIfPresent(imageData, forKey: .imageData)
+        try container.encodeIfPresent(thumbnailData, forKey: .thumbnailData)
+        try container.encodeIfPresent(imageType, forKey: .imageType)
+        try container.encodeIfPresent(colorHex, forKey: .colorHex)
+        if !filePaths.isEmpty {
+            try container.encode(filePaths, forKey: .filePaths)
+        }
+    }
 
     var hasContent: Bool {
         plainText != nil
@@ -191,8 +276,37 @@ struct ClipboardPayload: Codable, Hashable, Sendable {
             || rtfData != nil
             || htmlData != nil
             || imageData != nil
+            || thumbnailData != nil
             || colorHex != nil
             || !filePaths.isEmpty
+    }
+
+    func withoutImageData(thumbnailData: Data? = nil) -> ClipboardPayload {
+        ClipboardPayload(
+            plainText: plainText,
+            urlData: urlData,
+            rtfData: rtfData,
+            htmlData: htmlData,
+            imageData: nil,
+            thumbnailData: thumbnailData ?? self.thumbnailData,
+            imageType: imageType,
+            colorHex: colorHex,
+            filePaths: filePaths
+        )
+    }
+
+    func withImageData(_ imageData: Data) -> ClipboardPayload {
+        ClipboardPayload(
+            plainText: plainText,
+            urlData: urlData,
+            rtfData: rtfData,
+            htmlData: htmlData,
+            imageData: imageData,
+            thumbnailData: thumbnailData,
+            imageType: imageType,
+            colorHex: colorHex,
+            filePaths: filePaths
+        )
     }
 }
 
@@ -404,12 +518,17 @@ struct ClipboardSnapshot: Sendable {
 
         let normalizedColorHex = colorHex.flatMap(ClipboardColorCodec.normalizedHex)
 
+        let thumbnailData = imageData.flatMap {
+            ClipboardThumbnailGenerator.makeThumbnail(from: $0)
+        }
+
         let payload = ClipboardPayload(
             plainText: sanitizedText,
             urlData: urlData,
             rtfData: rtfData,
             htmlData: htmlData,
             imageData: imageData,
+            thumbnailData: thumbnailData,
             imageType: imageType,
             colorHex: normalizedColorHex,
             filePaths: filePaths
@@ -629,6 +748,40 @@ struct ClipboardEntry: Codable, Hashable, Identifiable, Sendable {
         updated.isPinned = isPinned
         return updated
     }
+
+    func withoutImageData(thumbnailData: Data? = nil) -> ClipboardEntry {
+        ClipboardEntry(
+            id: id,
+            kind: kind,
+            payload: payload.withoutImageData(thumbnailData: thumbnailData),
+            fingerprint: fingerprint,
+            source: source,
+            firstCopiedAt: firstCopiedAt,
+            lastCopiedAt: lastCopiedAt,
+            copyCount: copyCount,
+            isPinned: isPinned,
+            byteCount: byteCount,
+            imageWidth: imageWidth,
+            imageHeight: imageHeight
+        )
+    }
+
+    func withImageData(_ imageData: Data) -> ClipboardEntry {
+        ClipboardEntry(
+            id: id,
+            kind: kind,
+            payload: payload.withImageData(imageData),
+            fingerprint: fingerprint,
+            source: source,
+            firstCopiedAt: firstCopiedAt,
+            lastCopiedAt: lastCopiedAt,
+            copyCount: copyCount,
+            isPinned: isPinned,
+            byteCount: byteCount,
+            imageWidth: imageWidth,
+            imageHeight: imageHeight
+        )
+    }
 }
 
 private extension String {
@@ -787,11 +940,18 @@ enum ClipboardPasteboardWriter {
 
 final class ClipboardHistoryStore: @unchecked Sendable {
     private let fileURL: URL
+    private let imagesDirectoryURL: URL
     private let suppliedKeyData: Data?
     private let queue = DispatchQueue(label: "io.notscope.Lightsearch.clipboard-history", qos: .utility)
 
-    nonisolated init(fileURL: URL? = nil, keyData: Data? = nil) {
-        self.fileURL = fileURL ?? Self.defaultFileURL()
+    nonisolated init(
+        fileURL: URL? = nil,
+        imagesDirectoryURL: URL? = nil,
+        keyData: Data? = nil
+    ) {
+        let defaultFile = Self.defaultFileURL()
+        self.fileURL = fileURL ?? defaultFile
+        self.imagesDirectoryURL = imagesDirectoryURL ?? Self.defaultImagesDirectoryURL()
         self.suppliedKeyData = keyData
     }
 
@@ -811,9 +971,49 @@ final class ClipboardHistoryStore: @unchecked Sendable {
         }
     }
 
+    nonisolated func saveImageData(_ data: Data, for id: UUID) {
+        queue.async { [imagesDirectoryURL, suppliedKeyData] in
+            Self.saveImageDataLocked(
+                data,
+                for: id,
+                directoryURL: imagesDirectoryURL,
+                suppliedKeyData: suppliedKeyData
+            )
+        }
+    }
+
+    nonisolated func loadImageData(for id: UUID) -> Data? {
+        queue.sync {
+            loadImageDataLocked(for: id)
+        }
+    }
+
+    nonisolated func deleteImageData(for id: UUID) {
+        queue.async { [imagesDirectoryURL] in
+            let imageFileURL = imagesDirectoryURL.appendingPathComponent("\(id.uuidString).enc")
+            try? FileManager.default.removeItem(at: imageFileURL)
+        }
+    }
+
+    nonisolated func pruneImageData(keeping validIDs: Set<UUID>) {
+        queue.async { [imagesDirectoryURL] in
+            guard let contents = try? FileManager.default.contentsOfDirectory(
+                at: imagesDirectoryURL,
+                includingPropertiesForKeys: nil
+            ) else { return }
+            for url in contents where url.pathExtension == "enc" {
+                let uuidString = url.deletingPathExtension().lastPathComponent
+                if let uuid = UUID(uuidString: uuidString), !validIDs.contains(uuid) {
+                    try? FileManager.default.removeItem(at: url)
+                }
+            }
+        }
+    }
+
     nonisolated func clear() {
         queue.sync {
             try? FileManager.default.removeItem(at: fileURL)
+            try? FileManager.default.removeItem(at: imagesDirectoryURL)
         }
     }
 
@@ -823,6 +1023,17 @@ final class ClipboardHistoryStore: @unchecked Sendable {
 
     private nonisolated func loadDataLocked() -> Data? {
         guard let encryptedData = try? Data(contentsOf: fileURL),
+              let keyData = keyData(),
+              let sealedBox = try? AES.GCM.SealedBox(combined: encryptedData),
+              let data = try? AES.GCM.open(sealedBox, using: SymmetricKey(data: keyData)) else {
+            return nil
+        }
+        return data
+    }
+
+    private nonisolated func loadImageDataLocked(for id: UUID) -> Data? {
+        let imageFileURL = imagesDirectoryURL.appendingPathComponent("\(id.uuidString).enc")
+        guard let encryptedData = try? Data(contentsOf: imageFileURL),
               let keyData = keyData(),
               let sealedBox = try? AES.GCM.SealedBox(combined: encryptedData),
               let data = try? AES.GCM.open(sealedBox, using: SymmetricKey(data: keyData)) else {
@@ -869,6 +1080,41 @@ final class ClipboardHistoryStore: @unchecked Sendable {
         }
     }
 
+    private nonisolated static func saveImageDataLocked(
+        _ data: Data,
+        for id: UUID,
+        directoryURL: URL,
+        suppliedKeyData: Data?
+    ) {
+        let keyData: Data?
+        if let suppliedKeyData {
+            keyData = suppliedKeyData
+        } else {
+            keyData = try? keyDataFromKeychain()
+        }
+        guard let keyData else { return }
+
+        do {
+            let sealedBox = try AES.GCM.seal(data, using: SymmetricKey(data: keyData))
+            guard let encryptedData = sealedBox.combined else { return }
+
+            try FileManager.default.createDirectory(
+                at: directoryURL,
+                withIntermediateDirectories: true
+            )
+            let imageFileURL = directoryURL.appendingPathComponent("\(id.uuidString).enc")
+            try encryptedData.write(to: imageFileURL, options: .atomic)
+            chmod(directoryURL.path, 0o700)
+            chmod(imageFileURL.path, 0o600)
+
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            var persistedURL = imageFileURL
+            try? persistedURL.setResourceValues(values)
+        } catch {
+        }
+    }
+
     private nonisolated func keyData() -> Data? {
         if let suppliedKeyData {
             return suppliedKeyData
@@ -884,6 +1130,16 @@ final class ClipboardHistoryStore: @unchecked Sendable {
         return applicationSupportURL
             .appendingPathComponent("io.notscope.Lightsearch", isDirectory: true)
             .appendingPathComponent("clipboard-history.enc")
+    }
+
+    private nonisolated static func defaultImagesDirectoryURL() -> URL {
+        let applicationSupportURL = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.temporaryDirectory
+        return applicationSupportURL
+            .appendingPathComponent("io.notscope.Lightsearch", isDirectory: true)
+            .appendingPathComponent("clipboard-images", isDirectory: true)
     }
 
     private nonisolated static func keyDataFromKeychain() throws -> Data {

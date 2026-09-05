@@ -557,6 +557,124 @@ final class ClipboardHistoryTests: XCTestCase {
         XCTAssertNil(store.loadData())
     }
 
+    func testThumbnailGeneratorProducesCompactThumbnail() {
+        let thumbnail = ClipboardThumbnailGenerator.makeThumbnail(from: onePixelPNG)
+        XCTAssertNotNil(thumbnail)
+        XCTAssertGreaterThan(thumbnail?.count ?? 0, 0)
+    }
+
+    func testEncryptedImageStoreSaveLoadDeleteAndPruning() {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LightsearchImageStoreTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let store = ClipboardHistoryStore(
+            fileURL: directory.appendingPathComponent("history.enc"),
+            imagesDirectoryURL: directory.appendingPathComponent("images", isDirectory: true),
+            keyData: Data(repeating: 0x42, count: 32)
+        )
+
+        let imageID1 = UUID()
+        let imageID2 = UUID()
+        let testData1 = Data([0x01, 0x02, 0x03, 0x04])
+        let testData2 = Data([0x05, 0x06, 0x07, 0x08])
+
+        store.saveImageData(testData1, for: imageID1)
+        store.saveImageData(testData2, for: imageID2)
+        store.flush()
+
+        XCTAssertEqual(store.loadImageData(for: imageID1), testData1)
+        XCTAssertEqual(store.loadImageData(for: imageID2), testData2)
+
+        store.pruneImageData(keeping: [imageID1])
+        store.flush()
+
+        XCTAssertEqual(store.loadImageData(for: imageID1), testData1)
+        XCTAssertNil(store.loadImageData(for: imageID2))
+
+        store.deleteImageData(for: imageID1)
+        store.flush()
+        XCTAssertNil(store.loadImageData(for: imageID1))
+    }
+
+    func testClipboardFeatureOffloadsFullImageDataAndLoadsOnDemand() {
+        let feature = makeFeature()
+        let snapshot = ClipboardSnapshot(
+            types: [ClipboardSnapshot.pngType.rawValue],
+            imageData: onePixelPNG,
+            imageType: ClipboardSnapshot.pngType.rawValue,
+            source: source
+        )
+
+        feature.ingest(snapshot)
+        XCTAssertEqual(feature.entries.count, 1)
+
+        guard let entry = feature.entries.first else {
+            XCTFail("Expected entry to exist")
+            return
+        }
+
+        XCTAssertEqual(entry.kind, .image)
+        XCTAssertNil(entry.payload.imageData, "Full image payload must be offloaded from memory")
+        XCTAssertNotNil(entry.payload.thumbnailData, "Thumbnail data must be retained in memory")
+        XCTAssertEqual(feature.loadImageData(for: entry.id), onePixelPNG, "Full image payload must be loaded on demand from encrypted store")
+
+        let pasteboard = NSPasteboard.withUniqueName()
+        let didWrite = ClipboardPasteboardWriter.write(
+            entry.withImageData(feature.loadImageData(for: entry.id) ?? Data()),
+            to: pasteboard
+        )
+        XCTAssertTrue(didWrite)
+        XCTAssertEqual(pasteboard.data(forType: ClipboardSnapshot.pngType), onePixelPNG)
+    }
+
+    func testClipboardFeatureMigratesInlineImageArchiveOnLoad() async throws {
+        let suiteName = "LightsearchClipboardMigrationTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LightsearchMigration-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let keyData = Data(repeating: 0x33, count: 32)
+        let store = ClipboardHistoryStore(
+            fileURL: directory.appendingPathComponent("history.enc"),
+            imagesDirectoryURL: directory.appendingPathComponent("images", isDirectory: true),
+            keyData: keyData
+        )
+
+        let rawSnapshot = ClipboardSnapshot(
+            types: [ClipboardSnapshot.pngType.rawValue],
+            imageData: onePixelPNG,
+            imageType: ClipboardSnapshot.pngType.rawValue,
+            source: source
+        )
+        guard let legacyEntry = rawSnapshot.makeEntry() else {
+            XCTFail("Expected legacy entry")
+            return
+        }
+        XCTAssertNotNil(legacyEntry.payload.imageData)
+
+        let legacyArchive = ClipboardHistoryArchive(entries: [legacyEntry])
+        let encodedData = try JSONEncoder().encode(legacyArchive)
+        store.saveData(encodedData)
+        store.flush()
+
+        let feature = ClipboardFeature(historyStore: store, defaults: defaults)
+        await feature.load()
+
+        XCTAssertEqual(feature.entries.count, 1)
+        guard let loadedEntry = feature.entries.first else {
+            XCTFail("Expected loaded entry")
+            return
+        }
+
+        XCTAssertNil(loadedEntry.payload.imageData, "Migrated in-memory entry must have nil imageData")
+        XCTAssertNotNil(loadedEntry.payload.thumbnailData, "Migrated in-memory entry must have generated thumbnailData")
+        XCTAssertEqual(feature.loadImageData(for: loadedEntry.id), onePixelPNG, "Image data must be retrievable from encrypted image store")
+    }
+
     private func makeFeature() -> ClipboardFeature {
         let suiteName = "LightsearchClipboardTests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

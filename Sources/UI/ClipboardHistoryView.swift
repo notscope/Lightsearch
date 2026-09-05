@@ -5,6 +5,7 @@
 // Clipboard history presentation based on the supplied two-pane design.
 
 import AppKit
+import ImageIO
 import SwiftUI
 
 private enum ClipboardAction: CaseIterable, Hashable {
@@ -198,7 +199,7 @@ struct ClipboardHistoryView: View {
                                                 onPaste(indexedEntry.entry)
                                             },
                                             onDrag: {
-                                                ClipboardPasteboardWriter.makeDragPayload(for: indexedEntry.entry)
+                                                state.makeClipboardDragPayload(for: indexedEntry.entry)
                                             }
                                         )
                                         .id(indexedEntry.entry.id)
@@ -240,7 +241,7 @@ struct ClipboardHistoryView: View {
         Group {
             if let entry = state.selectedClipboardEntry() {
                 VStack(spacing: 0) {
-                    ClipboardPreview(entry: entry)
+                    ClipboardPreview(entry: entry, state: state)
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal, LauncherMetrics.footerHorizontalInset)
                         .padding(.top, LauncherMetrics.footerHorizontalInset)
@@ -871,8 +872,8 @@ private struct ClipboardEntryThumbnail: View {
                             .strokeBorder(.white.opacity(0.8), lineWidth: 1)
                     }
                     .padding(1)
-            } else if entry.kind == .image, let imageData = entry.payload.imageData {
-                ClipboardImageView(data: imageData)
+            } else if entry.kind == .image, let thumbnailData = entry.payload.thumbnailData ?? entry.payload.imageData {
+                ClipboardThumbnailImageView(data: thumbnailData)
                     .padding(2)
             } else {
                 Image(systemName: entry.kind.systemImageName)
@@ -886,6 +887,7 @@ private struct ClipboardEntryThumbnail: View {
 
 private struct ClipboardPreview: View {
     let entry: ClipboardEntry
+    let state: LauncherState
 
     var body: some View {
         Group {
@@ -940,17 +942,9 @@ private struct ClipboardPreview: View {
     }
 
     private var imagePreview: some View {
-        ZStack {
-            if let imageData = entry.payload.imageData {
-                ClipboardImageView(data: imageData)
-                    .padding(12)
-            } else {
-                Image(systemName: "photo")
-                    .font(.system(size: 54))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ClipboardImagePreviewView(entry: entry, state: state)
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var filePreview: some View {
@@ -1006,7 +1000,7 @@ private struct ClipboardPreview: View {
     }
 }
 
-private struct ClipboardImageView: View {
+private struct ClipboardThumbnailImageView: View {
     let data: Data
 
     @State private var image: NSImage?
@@ -1019,13 +1013,95 @@ private struct ClipboardImageView: View {
                     .interpolation(.high)
                     .scaledToFit()
             } else {
+                Color.clear
+            }
+        }
+        .task(id: data) {
+            image = ClipboardThumbnailCache.image(for: data)
+        }
+    }
+}
+
+private enum ClipboardThumbnailCache {
+    private static let cache: NSCache<NSData, NSImage> = {
+        let cache = NSCache<NSData, NSImage>()
+        cache.countLimit = 160
+        return cache
+    }()
+
+    static func image(for data: Data) -> NSImage? {
+        let key = data as NSData
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
+        guard let image = NSImage(data: data) else { return nil }
+        cache.setObject(image, forKey: key)
+        return image
+    }
+}
+
+private struct ClipboardImagePreviewView: View {
+    let entry: ClipboardEntry
+    let state: LauncherState
+
+    @State private var displayImage: NSImage?
+
+    var body: some View {
+        ZStack {
+            if let displayImage {
+                Image(nsImage: displayImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+            } else if let thumbnailData = entry.payload.thumbnailData {
+                if let thumb = ClipboardThumbnailCache.image(for: thumbnailData) {
+                    Image(nsImage: thumb)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                } else {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            } else {
                 ProgressView()
                     .controlSize(.small)
             }
         }
-        .task(id: data) {
-            image = NSImage(data: data)
+        .task(id: entry.id) {
+            await loadPreviewImage()
         }
+        .onDisappear {
+            displayImage = nil
+        }
+    }
+
+    private func loadPreviewImage() async {
+        let entryID = entry.id
+        guard let rawData = entry.payload.imageData ?? state.loadClipboardImageData(for: entryID) else {
+            return
+        }
+
+        let image = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+            Self.downsample(data: rawData, maxPixelSize: 1200)
+        }.value
+
+        guard !Task.isCancelled else { return }
+        self.displayImage = image
+    }
+
+    private nonisolated static func downsample(data: Data, maxPixelSize: Int) -> NSImage? {
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceShouldCacheImmediately: true
+        ]
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return NSImage(data: data)
+        }
+        return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 }
 

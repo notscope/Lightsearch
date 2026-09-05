@@ -101,6 +101,8 @@ protocol ClipboardPageFeature: LauncherPageFeature {
     func clearHistory()
     func writeToPasteboard(_ entry: ClipboardEntry) -> Bool
     func recordColorPickerResult()
+    func loadImageData(for id: UUID) -> Data?
+    func makeDragPayload(for entry: ClipboardEntry) -> ClipboardDragPayload?
 }
 
 @MainActor
