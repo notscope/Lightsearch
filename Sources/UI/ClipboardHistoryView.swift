@@ -841,10 +841,10 @@ private struct ClipboardEntryRow: View {
         .padding(.horizontal, 8)
         .frame(height: 48)
         .background {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
+            RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
                 .fill(isSelected ? Color.primary.opacity(0.14) : Color.clear)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
         .overlay {
             ClipboardClickTargetRepresentable(
                 onSingleClick: onSelect,

@@ -24,6 +24,7 @@ enum LauncherMetrics {
     static let clipboardFooterHeight: CGFloat = 40
     static let verticalInset: CGFloat = 12
     static let cornerRadius: CGFloat = 16
+    static let rowCornerRadius: CGFloat = 10
     static let visibleEntryCount: Int = 7
 
     /// A conversion card occupies the same vertical space as two rows.
@@ -632,17 +633,17 @@ private struct RecentFileCard: View {
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 104, maxHeight: 104, alignment: .topLeading)
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
                 .fill(isSelected ? Color.accentColor : Color.clear)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
                 .strokeBorder(
                     isSelected ? Color.clear : Color(nsColor: .separatorColor).opacity(0.4),
                     lineWidth: 0.7
                 )
         }
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
         .overlay {
             ClickTargetRepresentable(
                 onSingleClick: onSelect,
@@ -691,11 +692,11 @@ private struct ConversionResultCard: View {
                 .padding(.bottom, 6)
         }
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
                 .fill(isSelected ? Color.accentColor : Color.conversionContainerBackground)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
         .overlay {
             ClickTargetRepresentable(
                 onSingleClick: onSelect,
@@ -786,10 +787,10 @@ private struct SearchResultRow<Icon: View>: View {
         .padding(.horizontal, 12)
         .frame(height: LauncherMetrics.rowHeight)
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
                 .fill(isSelected ? Color.accentColor : Color.clear)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
         .overlay {
             ClickTargetRepresentable(
                 onSingleClick: onSelect,
