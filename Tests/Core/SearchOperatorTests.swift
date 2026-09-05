@@ -46,15 +46,13 @@ final class SearchOperatorTests: XCTestCase {
 
     func testActionsOperator() {
         let cases = [
-            "type: actions",
             "type:actions",
-            "type: action",
             "type:action",
-            "type: act",
-            "kind: actions",
-            "kind: action",
-            "TYPE: ACTIONS",
-            "Type: Action"
+            "type:act",
+            "kind:actions",
+            "kind:action",
+            "TYPE:ACTIONS",
+            "Type:Action"
         ]
 
         for input in cases {
@@ -63,30 +61,28 @@ final class SearchOperatorTests: XCTestCase {
             XCTAssertEqual(parsed.searchTerm, "", "Failed on input: \(input)")
         }
 
-        let withTerm = LauncherQueryParser.parse("type: actions clip")
+        let withTerm = LauncherQueryParser.parse("type:actions clip")
         XCTAssertEqual(withTerm.filter, .actions)
         XCTAssertEqual(withTerm.searchTerm, "clip")
 
-        let withTermNoSpace = LauncherQueryParser.parse("type:actions color picker")
-        XCTAssertEqual(withTermNoSpace.filter, .actions)
-        XCTAssertEqual(withTermNoSpace.searchTerm, "color picker")
+        let withTermMultipleWords = LauncherQueryParser.parse("type:actions color picker")
+        XCTAssertEqual(withTermMultipleWords.filter, .actions)
+        XCTAssertEqual(withTermMultipleWords.searchTerm, "color picker")
 
-        let postfix = LauncherQueryParser.parse("history type: actions")
+        let postfix = LauncherQueryParser.parse("history type:actions")
         XCTAssertEqual(postfix.filter, .actions)
         XCTAssertEqual(postfix.searchTerm, "history")
     }
 
     func testAppsOperator() {
         let cases = [
-            "type: apps",
             "type:apps",
-            "type: app",
             "type:app",
-            "type: application",
-            "type: applications",
-            "kind: apps",
-            "kind: app",
-            "TYPE: APPS"
+            "type:application",
+            "type:applications",
+            "kind:apps",
+            "kind:app",
+            "TYPE:APPS"
         ]
 
         for input in cases {
@@ -95,28 +91,27 @@ final class SearchOperatorTests: XCTestCase {
             XCTAssertEqual(parsed.searchTerm, "", "Failed on input: \(input)")
         }
 
-        let withTerm = LauncherQueryParser.parse("type: apps safari")
+        let withTerm = LauncherQueryParser.parse("type:apps safari")
         XCTAssertEqual(withTerm.filter, .apps)
         XCTAssertEqual(withTerm.searchTerm, "safari")
 
-        let postfix = LauncherQueryParser.parse("xcode type: app")
+        let postfix = LauncherQueryParser.parse("xcode type:app")
         XCTAssertEqual(postfix.filter, .apps)
         XCTAssertEqual(postfix.searchTerm, "xcode")
     }
 
     func testSettingsOperator() {
         let cases = [
-            "type: settings",
             "type:settings",
-            "type: setting",
-            "type: set",
-            "type: pref",
-            "type: prefs",
-            "type: preference",
-            "type: preferences",
-            "kind: settings",
-            "kind: setting",
-            "TYPE: SETTINGS"
+            "type:setting",
+            "type:set",
+            "type:pref",
+            "type:prefs",
+            "type:preference",
+            "type:preferences",
+            "kind:settings",
+            "kind:setting",
+            "TYPE:SETTINGS"
         ]
 
         for input in cases {
@@ -125,13 +120,54 @@ final class SearchOperatorTests: XCTestCase {
             XCTAssertEqual(parsed.searchTerm, "", "Failed on input: \(input)")
         }
 
-        let withTerm = LauncherQueryParser.parse("type: settings display")
+        let withTerm = LauncherQueryParser.parse("type:settings display")
         XCTAssertEqual(withTerm.filter, .settings)
         XCTAssertEqual(withTerm.searchTerm, "display")
 
-        let postfix = LauncherQueryParser.parse("sound type: settings")
+        let postfix = LauncherQueryParser.parse("sound type:settings")
         XCTAssertEqual(postfix.filter, .settings)
         XCTAssertEqual(postfix.searchTerm, "sound")
+    }
+
+    func testOperatorRequiresNoSpaceAfterColon() {
+        // "type: apps" and "kind: apps" with spaces MUST NOT be supported as operators
+        let spaceCases = [
+            "type: apps",
+            "type: actions",
+            "type: settings",
+            "type: apps safari",
+            "kind: apps",
+            "kind: actions",
+            "kind: settings",
+            "kind: apps safari"
+        ]
+
+        for input in spaceCases {
+            let parsed = LauncherQueryParser.parse(input)
+            XCTAssertNil(parsed.filter, "\(input) with space after colon should not be treated as an operator")
+            XCTAssertEqual(parsed.searchTerm, input)
+        }
+
+        // Without space, both type: and kind: MUST be supported
+        let noSpaceAppsType = LauncherQueryParser.parse("type:apps")
+        XCTAssertEqual(noSpaceAppsType.filter, .apps)
+        XCTAssertEqual(noSpaceAppsType.searchTerm, "")
+
+        let noSpaceAppsKind = LauncherQueryParser.parse("kind:apps")
+        XCTAssertEqual(noSpaceAppsKind.filter, .apps)
+        XCTAssertEqual(noSpaceAppsKind.searchTerm, "")
+
+        let noSpaceActionsType = LauncherQueryParser.parse("type:actions")
+        XCTAssertEqual(noSpaceActionsType.filter, .actions)
+
+        let noSpaceActionsKind = LauncherQueryParser.parse("kind:actions")
+        XCTAssertEqual(noSpaceActionsKind.filter, .actions)
+
+        let noSpaceSettingsType = LauncherQueryParser.parse("type:settings")
+        XCTAssertEqual(noSpaceSettingsType.filter, .settings)
+
+        let noSpaceSettingsKind = LauncherQueryParser.parse("kind:settings")
+        XCTAssertEqual(noSpaceSettingsKind.filter, .settings)
     }
 
     // MARK: - State Integration Tests
@@ -142,7 +178,7 @@ final class SearchOperatorTests: XCTestCase {
         let app2 = InstalledApplication(id: "app2", name: "Beta", bundleIdentifier: "com.test.beta", path: "/Applications/Beta.app")
         let state = LauncherState(previewApplications: [app1, app2])
 
-        state.query = "type: actions"
+        state.query = "type:actions"
         let results = state.visibleResults
 
         // Should return only actions
@@ -163,7 +199,7 @@ final class SearchOperatorTests: XCTestCase {
         let app = InstalledApplication(id: "app1", name: "Clip App", bundleIdentifier: "com.test.clip", path: "/Applications/Clip.app")
         let state = LauncherState(previewApplications: [app])
 
-        state.query = "type: actions clip"
+        state.query = "type:actions clip"
         let results = state.visibleResults
 
         XCTAssertEqual(results.count, 1)
@@ -180,7 +216,7 @@ final class SearchOperatorTests: XCTestCase {
         let app2 = InstalledApplication(id: "app2", name: "Notes", bundleIdentifier: "com.apple.Notes", path: "/Applications/Notes.app")
         let state = LauncherState(previewApplications: [app1, app2])
 
-        state.query = "type: apps safari"
+        state.query = "type:apps safari"
         let results = state.visibleResults
 
         XCTAssertEqual(results.count, 1)

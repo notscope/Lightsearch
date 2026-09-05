@@ -51,21 +51,24 @@ struct ParsedSearchQuery: Equatable, Sendable {
 enum LauncherQueryParser {
     private static let operatorRegex: NSRegularExpression? = {
         try? NSRegularExpression(
-            pattern: #"(?:^|\s)(?:type|kind):\s*([a-zA-Z]+)"#,
+            pattern: #"(?:^|\s)(?:type:|kind:)([a-zA-Z]+)"#,
             options: [.caseInsensitive]
         )
     }()
 
     /// Parses a raw user query string to extract any `type:<kind>` or `kind:<kind>` filter operator.
+    /// Note: A colon must be followed directly by the kind name with no space (e.g. `type:apps`, not `type: apps`).
     ///
     /// Examples:
-    /// - `"type: actions"` -> filter: `.actions`, searchTerm: `""`
-    /// - `"type: actions clip"` -> filter: `.actions`, searchTerm: `"clip"`
+    /// - `"type:actions"` -> filter: `.actions`, searchTerm: `""`
+    /// - `"type:actions clip"` -> filter: `.actions`, searchTerm: `"clip"`
     /// - `"type:apps safari"` -> filter: `.apps`, searchTerm: `"safari"`
-    /// - `"type: settings display"` -> filter: `.settings`, searchTerm: `"display"`
-    /// - `"safari type: apps"` -> filter: `.apps`, searchTerm: `"safari"`
+    /// - `"type:settings display"` -> filter: `.settings`, searchTerm: `"display"`
+    /// - `"kind:apps"` -> filter: `.apps`, searchTerm: `""`
+    /// - `"safari type:apps"` -> filter: `.apps`, searchTerm: `"safari"`
     /// - `"normal search"` -> filter: `nil`, searchTerm: `"normal search"`
     static func parse(_ query: String) -> ParsedSearchQuery {
+
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return ParsedSearchQuery(rawQuery: query, filter: nil, searchTerm: "")
