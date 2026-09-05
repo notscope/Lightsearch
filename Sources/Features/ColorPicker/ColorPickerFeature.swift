@@ -19,6 +19,23 @@ final class ColorPickerFeature: LauncherSearchFeature {
     ]
 
     func searchResults(for context: LauncherSearchContext) -> LauncherFeatureSearchOutput {
+        if let filter = context.filter {
+            guard filter == .actions else {
+                return LauncherFeatureSearchOutput(results: [], placement: .beforeApplications)
+            }
+            if context.searchTerm.isEmpty {
+                return LauncherFeatureSearchOutput(results: [.colorPicker], placement: .beforeApplications)
+            }
+            let query = context.searchTerm
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+                .lowercased()
+            guard Self.matchesSearchAlias(in: query) else {
+                return LauncherFeatureSearchOutput(results: [], placement: .beforeApplications)
+            }
+            return LauncherFeatureSearchOutput(results: [.colorPicker], placement: .beforeApplications)
+        }
+
         let query = context.query
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
@@ -36,6 +53,7 @@ final class ColorPickerFeature: LauncherSearchFeature {
             placement: .beforeApplications
         )
     }
+
 
     private static func matchesSearchAlias(in query: String) -> Bool {
         query.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).contains { token in

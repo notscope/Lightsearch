@@ -221,6 +221,29 @@ final class FileSearchFeature: LauncherSearchFeature, FileSearchPageFeature {
     }
 
     func searchResults(for context: LauncherSearchContext) -> LauncherFeatureSearchOutput {
+        if let filter = context.filter {
+            guard filter == .actions else {
+                return LauncherFeatureSearchOutput(results: [], placement: .afterApplications)
+            }
+            if context.searchTerm.isEmpty {
+                return LauncherFeatureSearchOutput(results: [.fileSearch], placement: .afterApplications)
+            }
+            let application = InstalledApplication(
+                id: fileSearchActionID,
+                name: "File Search",
+                bundleIdentifier: "Search files and folders",
+                path: ""
+            )
+            let matches = ApplicationSearch.rankedResults(
+                [application],
+                query: context.searchTerm
+            )
+            return LauncherFeatureSearchOutput(
+                results: matches.isEmpty ? [] : [.fileSearch],
+                placement: .afterApplications
+            )
+        }
+
         let searchQuery = context.applicationQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !searchQuery.isEmpty else {
             return LauncherFeatureSearchOutput(
@@ -245,6 +268,7 @@ final class FileSearchFeature: LauncherSearchFeature, FileSearchPageFeature {
             placement: .afterApplications
         )
     }
+
 
     func queryChanged(_ query: String, page: LauncherPage) {
         currentQuery = query

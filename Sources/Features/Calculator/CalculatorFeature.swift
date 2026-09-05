@@ -16,7 +16,8 @@ final class CalculatorFeature: LauncherSearchFeature {
     private var currentQuery = ""
 
     func searchResults(for context: LauncherSearchContext) -> LauncherFeatureSearchOutput {
-        guard let conversion = ConversionEngine.result(
+        guard context.filter == nil,
+              let conversion = ConversionEngine.result(
             for: context.query,
             resolvedTimeZone: resolvedLocation?.timeZone,
             resolvedCountry: resolvedLocation?.country
@@ -37,10 +38,12 @@ final class CalculatorFeature: LauncherSearchFeature {
         currentQuery = query
         stop()
         guard page == .applications,
+              LauncherQueryParser.parse(query).filter == nil,
               let location = ConversionEngine.timeZoneLocation(for: query),
               location.count >= 2 else {
             return
         }
+
 
         if let immediateResult = ConversionEngine.result(for: query),
            immediateResult.inputLabel != "Current time" {

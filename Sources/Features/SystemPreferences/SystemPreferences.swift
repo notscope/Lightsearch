@@ -401,6 +401,31 @@ final class SystemPreferencesFeature: LauncherSearchFeature {
     }
 
     func searchResults(for context: LauncherSearchContext) -> LauncherFeatureSearchOutput {
+        if let filter = context.filter {
+            guard filter == .settings else {
+                return LauncherFeatureSearchOutput(results: [], placement: .beforeApplications)
+            }
+            let query = context.searchTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+            let rankedPreferences: [SystemPreference]
+            if query.isEmpty {
+                rankedPreferences = preferences.filter { !$0.isSubitem }
+            } else {
+                rankedPreferences = SystemPreferenceSearch.rankedResults(
+                    preferences,
+                    query: query,
+                    includeSubitems: true
+                )
+            }
+            let results = rankedPreferences
+                .prefix(maximumResults)
+                .map { LauncherResult.systemPreference($0) }
+
+            return LauncherFeatureSearchOutput(
+                results: Array(results),
+                placement: .beforeApplications
+            )
+        }
+
         let intent = SystemPreferenceSearch.intent(for: context.query)
         let rankedPreferences = SystemPreferenceSearch.rankedResults(
             preferences,
@@ -419,4 +444,5 @@ final class SystemPreferencesFeature: LauncherSearchFeature {
                 : .afterApplications
         )
     }
+
 }

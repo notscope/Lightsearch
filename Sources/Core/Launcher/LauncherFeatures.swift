@@ -17,6 +17,7 @@ struct LauncherFeatureSearchOutput {
 
 struct LauncherFeatureSearchResults {
     let applicationQuery: String
+    let parsedQuery: ParsedSearchQuery
     let leading: [LauncherResult]
     let trailing: [LauncherResult]
 }
@@ -24,7 +25,22 @@ struct LauncherFeatureSearchResults {
 struct LauncherSearchContext {
     let query: String
     let applicationQuery: String
+    let filter: SearchKindFilter?
+    let searchTerm: String
+
+    init(
+        query: String,
+        applicationQuery: String,
+        filter: SearchKindFilter? = nil,
+        searchTerm: String = ""
+    ) {
+        self.query = query
+        self.applicationQuery = applicationQuery
+        self.filter = filter
+        self.searchTerm = searchTerm
+    }
 }
+
 
 @MainActor
 protocol LauncherSearchFeature: AnyObject {
@@ -128,15 +144,23 @@ final class LauncherFeatureRegistry {
     }
 
     func applicationQuery(for query: String) -> String {
-        searchFeatures.reduce(query) { currentQuery, feature in
+        let parsed = LauncherQueryParser.parse(query)
+        if parsed.filter != nil {
+            return parsed.searchTerm
+        }
+        return searchFeatures.reduce(query) { currentQuery, feature in
             feature.applicationQuery(for: currentQuery)
         }
     }
 
     func searchResults(for query: String) -> LauncherFeatureSearchResults {
+        let parsedQuery = LauncherQueryParser.parse(query)
+        let appQuery = applicationQuery(for: query)
         let context = LauncherSearchContext(
             query: query,
-            applicationQuery: applicationQuery(for: query)
+            applicationQuery: appQuery,
+            filter: parsedQuery.filter,
+            searchTerm: parsedQuery.searchTerm
         )
         var leadingResults: [LauncherResult] = []
         var trailingResults: [LauncherResult] = []
@@ -151,12 +175,19 @@ final class LauncherFeatureRegistry {
             }
         }
 
+        if let filter = parsedQuery.filter {
+            leadingResults = leadingResults.filter { $0.kind == filter }
+            trailingResults = trailingResults.filter { $0.kind == filter }
+        }
+
         return LauncherFeatureSearchResults(
             applicationQuery: context.applicationQuery,
+            parsedQuery: parsedQuery,
             leading: leadingResults,
             trailing: trailingResults
         )
     }
+
 
     func stop() {
         for feature in searchFeatures {

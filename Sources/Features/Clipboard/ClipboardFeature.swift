@@ -80,6 +80,23 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
     }
 
     func searchResults(for context: LauncherSearchContext) -> LauncherFeatureSearchOutput {
+        if let filter = context.filter {
+            guard filter == .actions else {
+                return LauncherFeatureSearchOutput(results: [], placement: .beforeApplications)
+            }
+            if context.searchTerm.isEmpty {
+                return LauncherFeatureSearchOutput(results: [.clipboardHistory], placement: .beforeApplications)
+            }
+            let query = context.searchTerm
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+                .lowercased()
+            guard Self.matchesSearchAlias(in: query) else {
+                return LauncherFeatureSearchOutput(results: [], placement: .beforeApplications)
+            }
+            return LauncherFeatureSearchOutput(results: [.clipboardHistory], placement: .beforeApplications)
+        }
+
         let query = context.query
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
@@ -97,6 +114,7 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
             placement: .beforeApplications
         )
     }
+
 
     func queryChanged(_ query: String, page: LauncherPage) {
         currentQuery = query

@@ -42,7 +42,11 @@ final class LauncherState: ObservableObject {
     }
 
     var filteredApplications: [InstalledApplication] {
-        Array(
+        let parsed = LauncherQueryParser.parse(query)
+        if let filter = parsed.filter, filter != .apps {
+            return []
+        }
+        return Array(
             ApplicationSearch.rankedResults(
                 applications,
                 query: features.applicationQuery(for: query),
@@ -50,6 +54,7 @@ final class LauncherState: ObservableObject {
             ).prefix(maximumApplicationResults)
         )
     }
+
 
     var visibleResults: [LauncherResult] {
         displayedResults
@@ -248,6 +253,19 @@ final class LauncherState: ObservableObject {
 
     private var displayedResults: [LauncherResult] {
         var results = filteredLauncherResults
+        let parsed = LauncherQueryParser.parse(query)
+
+        // When a specific filter is active, never pad with fallback applications
+        // unless filtering for apps with an empty search term.
+        if let filter = parsed.filter {
+            if filter != .apps {
+                return results
+            }
+            if !parsed.searchTerm.isEmpty {
+                return results
+            }
+        }
+
         guard results.count < LauncherMetrics.visibleEntryCount, !applications.isEmpty else {
             return results
         }
@@ -267,16 +285,23 @@ final class LauncherState: ObservableObject {
 
     private var filteredLauncherResults: [LauncherResult] {
         let featureResults = features.searchResults(for: query)
-        let rankedApplications = ApplicationSearch.rankedResults(
-            applications,
-            query: featureResults.applicationQuery,
-            history: launchHistory
-        )
-        let applicationMatches = Array(rankedApplications.prefix(maximumApplicationResults))
-        if page == .applications && !applicationMatches.isEmpty {
-            previousResults = applicationMatches
+        let filter = featureResults.parsedQuery.filter
+
+        let applicationResults: [LauncherResult]
+        if filter == nil || filter == .apps {
+            let rankedApplications = ApplicationSearch.rankedResults(
+                applications,
+                query: featureResults.applicationQuery,
+                history: launchHistory
+            )
+            let applicationMatches = Array(rankedApplications.prefix(maximumApplicationResults))
+            if page == .applications && !applicationMatches.isEmpty {
+                previousResults = applicationMatches
+            }
+            applicationResults = applicationMatches.map { LauncherResult.application($0) }
+        } else {
+            applicationResults = []
         }
-        let applicationResults = applicationMatches.map { LauncherResult.application($0) }
 
         return featureResults.leading
             + applicationResults

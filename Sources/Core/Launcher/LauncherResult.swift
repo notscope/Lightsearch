@@ -39,4 +39,17 @@ enum LauncherResult: Identifiable {
             return colorPickerActionID
         }
     }
+
+    var kind: SearchKindFilter? {
+        switch self {
+        case .conversion:
+            return nil
+        case .systemPreference:
+            return .settings
+        case .application:
+            return .apps
+        case .fileSearch, .clipboardHistory, .colorPicker:
+            return .actions
+        }
+    }
 }
