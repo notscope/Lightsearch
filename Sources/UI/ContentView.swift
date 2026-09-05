@@ -22,6 +22,7 @@ enum LauncherMetrics {
     static let searchBarControlSize: CGFloat = 24
     static let clipboardPreviewHeight: CGFloat = 200
     static let clipboardFooterHeight: CGFloat = 40
+    static let footerHorizontalInset: CGFloat = 14
     static let verticalInset: CGFloat = 12
     static let cornerRadius: CGFloat = 16
     static let rowCornerRadius: CGFloat = 10

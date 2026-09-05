@@ -79,7 +79,7 @@ struct ClipboardHistoryView: View {
                     .zIndex(1)
 
                 actionPopover(for: entry)
-                    .padding(.trailing, 22)
+                    .padding(.trailing, LauncherMetrics.footerHorizontalInset)
                     .padding(
                         .bottom,
                         LauncherMetrics.clipboardFooterHeight
@@ -265,15 +265,14 @@ struct ClipboardHistoryView: View {
     private var clipboardFooter: some View {
         HStack(spacing: 0) {
             clipboardFooterLabel
-                .padding(.leading, 22)
 
             Spacer(minLength: 16)
 
             if let entry = state.selectedClipboardEntry() {
                 clipboardActionBar(for: entry)
-                    .padding(.trailing, 22)
             }
         }
+        .padding(.horizontal, LauncherMetrics.footerHorizontalInset)
         .frame(height: LauncherMetrics.clipboardFooterHeight)
     }
 
@@ -390,49 +389,37 @@ struct ClipboardHistoryView: View {
     }
 
     private func clipboardActionBar(for entry: ClipboardEntry) -> some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 12) {
             Button {
                 onPaste(entry)
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Text("Paste to \(state.clipboardTargetApplicationName)")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(isHoveringPaste ? Color.primary : Color.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     KeycapView(symbol: "↵")
                 }
-                .padding(.leading, 9)
-                .padding(.trailing, 7)
-                .frame(maxHeight: .infinity)
-                .background(isHoveringPaste ? Color.primary.opacity(0.06) : Color.clear)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .onHover { isHoveringPaste = $0 }
             .accessibilityLabel("Paste to \(state.clipboardTargetApplicationName)")
 
-            Rectangle()
-                .fill(Color.primary.opacity(0.12))
-                .frame(width: 1, height: 14)
-
             Button {
                 isActionsPresented.toggle()
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Text("Actions")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.primary.opacity(0.85))
+                        .foregroundStyle(
+                            isHoveringActions || isActionsPresented
+                                ? Color.primary
+                                : Color.secondary
+                        )
                     KeycapView(symbol: "⌘K")
                 }
-                .padding(.leading, 7)
-                .padding(.trailing, 9)
-                .frame(maxHeight: .infinity)
-                .background(
-                    isHoveringActions || isActionsPresented
-                        ? Color.primary.opacity(0.08)
-                        : Color.clear
-                )
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -440,16 +427,6 @@ struct ClipboardHistoryView: View {
             .keyboardShortcut("k", modifiers: .command)
             .accessibilityLabel("Clipboard actions")
         }
-        .frame(height: 28)
-        .background {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.primary.opacity(0.05))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.7)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 
     private func actionPopover(for entry: ClipboardEntry) -> some View {
