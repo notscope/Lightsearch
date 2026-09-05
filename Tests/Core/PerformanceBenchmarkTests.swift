@@ -67,6 +67,20 @@ final class PerformanceBenchmarkTests: XCTestCase {
         XCTAssertEqual(finderResults.first?.name, "Finder", "Finder must be the top search result for 'finder'")
     }
 
+    func testDeveloperAndUserApplicationScanning() {
+        let apps = InstalledApplicationScanner.scan()
+
+        if apps.contains(where: { $0.name == "SF Symbols" }) {
+            let sfResults = ApplicationSearch.rankedResults(apps, query: "sf sym")
+            XCTAssertEqual(sfResults.first?.name, "SF Symbols", "'SF Symbols' should be the top match for 'sf sym'")
+        }
+
+        if apps.contains(where: { $0.name == "Icon Composer" }) {
+            let iconComposerResults = ApplicationSearch.rankedResults(apps, query: "icon composer")
+            XCTAssertEqual(iconComposerResults.first?.name, "Icon Composer", "'Icon Composer' should be the top match for 'icon composer'")
+        }
+    }
+
     func testApplicationSearchThroughputBenchmark() {
         let apps = InstalledApplicationScanner.scan()
         let queries = ["safari", "code", "term", "display", "sound", "network", "calc", "mail", "notes", "music"]

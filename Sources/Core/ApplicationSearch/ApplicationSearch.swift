@@ -3,6 +3,7 @@
 //  Lightsearch
 //
 
+import Darwin
 import Foundation
 
 struct InstalledApplication: Identifiable, Hashable, Sendable {
@@ -354,12 +355,50 @@ enum InstalledApplicationScanner {
             }
         }
 
+        // In sandboxed environments, .userDomainMask can redirect to the sandbox container.
+        // Resolve the real user home directory via POSIX getpwuid to access the actual ~/Applications directory.
+        if let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir {
+            let realHome = fileManager.string(withFileSystemRepresentation: home, length: Int(strlen(home)))
+            let userApplications = (realHome as NSString).appendingPathComponent("Applications")
+            if fileManager.fileExists(atPath: userApplications) {
+                roots.insert(userApplications)
+            }
+        }
+
         let extraRoots = [
             "/System/Cryptexes/App/System/Applications",
             "/System/Library/CoreServices/Applications"
         ]
         for extraRoot in extraRoots where fileManager.fileExists(atPath: extraRoot) {
             roots.insert(extraRoot)
+        }
+
+        // Discover bundled developer applications inside Xcode installations
+        let searchDirectories = [
+            "/Applications",
+            roots.first(where: { $0.hasSuffix("/Applications") && $0.contains("Users") })
+        ].compactMap { $0 }
+
+        for searchDir in searchDirectories {
+            guard let dirContents = try? fileManager.contentsOfDirectory(atPath: searchDir) else { continue }
+            for item in dirContents where item.hasPrefix("Xcode") && item.hasSuffix(".app") {
+                let xcodePath = (searchDir as NSString).appendingPathComponent(item)
+                let candidateSubroots = [
+                    (xcodePath as NSString).appendingPathComponent("Contents/Applications"),
+                    (xcodePath as NSString).appendingPathComponent("Contents/Developer/Applications")
+                ]
+                for subroot in candidateSubroots where fileManager.fileExists(atPath: subroot) {
+                    roots.insert(subroot)
+                }
+            }
+        }
+
+        if let developerDir = ProcessInfo.processInfo.environment["DEVELOPER_DIR"],
+           fileManager.fileExists(atPath: developerDir) {
+            let devApps = (developerDir as NSString).appendingPathComponent("Applications")
+            if fileManager.fileExists(atPath: devApps) { roots.insert(devApps) }
+            let xcodeApps = ((developerDir as NSString).deletingLastPathComponent as NSString).appendingPathComponent("Applications")
+            if fileManager.fileExists(atPath: xcodeApps) { roots.insert(xcodeApps) }
         }
 
         var applicationsByIdentifier = [String: InstalledApplication]()
