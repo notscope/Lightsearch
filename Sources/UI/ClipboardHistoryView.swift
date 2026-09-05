@@ -173,7 +173,7 @@ struct ClipboardHistoryView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical) {
-                        LazyVStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 8) {
                             ForEach(groupedEntries) { group in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(group.title)
@@ -181,6 +181,7 @@ struct ClipboardHistoryView: View {
                                         .foregroundStyle(.secondary)
                                         .padding(.horizontal, 2)
                                         .padding(.top, group.title == "Pinned" ? 0 : 4)
+                                        .id(group.id)
 
                                     ForEach(group.entries) { indexedEntry in
                                         ClipboardEntryRow(
@@ -210,7 +211,23 @@ struct ClipboardHistoryView: View {
                     .scrollIndicators(.never)
                     .onChange(of: state.selectedIndex) { _, newIndex in
                         guard state.visibleClipboardEntries.indices.contains(newIndex) else { return }
-                        proxy.scrollTo(state.visibleClipboardEntries[newIndex].id, anchor: nil)
+                        if newIndex == 0, let topID = groupedEntries.first?.id {
+                            proxy.scrollTo(topID, anchor: .top)
+                        } else if newIndex == state.visibleClipboardEntries.count - 1 {
+                            proxy.scrollTo(state.visibleClipboardEntries[newIndex].id, anchor: .bottom)
+                        } else {
+                            proxy.scrollTo(state.visibleClipboardEntries[newIndex].id, anchor: nil)
+                        }
+                    }
+                    .onChange(of: state.query) { _, _ in
+                        if let topID = groupedEntries.first?.id {
+                            proxy.scrollTo(topID, anchor: .top)
+                        }
+                    }
+                    .onChange(of: state.clipboardFilter) { _, _ in
+                        if let topID = groupedEntries.first?.id {
+                            proxy.scrollTo(topID, anchor: .top)
+                        }
                     }
                 }
             }
