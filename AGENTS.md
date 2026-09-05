@@ -63,11 +63,13 @@ Prioritize the fastest practical implementation and reliable behavior over visua
 
 Treat documentation edits, typo fixes, and isolated low-risk changes as trivial; they may remain on the current branch or `main`. Treat new features, refactors, UI overhauls, performance or concurrency work, and build, signing, or dependency changes as significant; do them on a separate `codex/<short-description>` branch so `main` remains unaffected if something breaks. If the worktree already contains uncommitted changes, inspect and preserve them before switching branches or creating a branch; never stash, discard, or move them without explicit direction. When uncertain, classify the change as significant.
 
-After a significant change passes validation, merge its branch back into `main`, remove the temporary branch when it is no longer needed, and leave `main` checked out with a clean worktree. Trivial changes made directly on `main` should also finish clean.
+**CRITICAL MERGE RULE**: NEVER merge any branch back into `main` until the user explicitly gives the green light to do so. Keep all work on the feature/fix branch and present the results to the user first. Only perform the merge to `main` once the user explicitly instructs you to merge.
 
 ## Testing Guidelines
 
-Run the Debug build and XCTest commands above. Calculator changes must keep the expression tests green; add table-driven cases for every new operator/function and invalid domain or overflow case. Also manually check the menu-bar item, keyboard navigation, panel resizing, app launching, file search, and dismissal behavior. For UI changes, include a screenshot or a concise manual reproduction in the pull request.
+Run the Debug build and XCTest commands above when modifying core logic, state management, parsers, or scanners. Calculator changes must keep the expression tests green; add table-driven cases for every new operator/function and invalid domain or overflow case.
+
+**COSMETIC CHANGES**: For purely cosmetic, visual UI styling, or layout margin/padding tweaks, there is NO NEED to run the test suite. Only compile/build to ensure syntax correctness. Also manually check the menu-bar item, keyboard navigation, panel resizing, app launching, file search, and dismissal behavior where applicable.
 
 ## Commit & Pull Request Guidelines
 
