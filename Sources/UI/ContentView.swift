@@ -349,9 +349,7 @@ struct ContentView: View {
                 title: "File Search",
                 subtitle: "Search files and folders",
                 kind: "Action",
-                icon: Image(systemName: "doc.text.magnifyingglass")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.secondary),
+                icon: ActionIconView(systemName: "doc.text.magnifyingglass"),
                 isSelected: state.selectedIndex == index,
                 accessibilityHint: "Search files and folders",
                 onSelect: {
@@ -367,9 +365,7 @@ struct ContentView: View {
                 title: "Clipboard History",
                 subtitle: "Search and paste copied items",
                 kind: "Action",
-                icon: Image(systemName: "clipboard")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.secondary),
+                icon: ActionIconView(systemName: "clipboard"),
                 isSelected: state.selectedIndex == index,
                 accessibilityHint: "Opens clipboard history",
                 onSelect: {
@@ -385,9 +381,7 @@ struct ContentView: View {
                 title: "Color Picker",
                 subtitle: "Pick a color from your screen",
                 kind: "Action",
-                icon: Image(systemName: "eyedropper")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.secondary),
+                icon: ActionIconView(systemName: "eyedropper"),
                 isSelected: state.selectedIndex == index,
                 accessibilityHint: "Picks a color from the screen",
                 onSelect: {
@@ -872,6 +866,50 @@ final class WorkspaceIconCache {
         prewarmingTask?.cancel()
         prewarmingTask = nil
         storage.clear()
+    }
+}
+
+private struct ActionIconView: View {
+    let systemName: String
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(nsColor: NSColor(name: nil) { appearance in
+                                appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                                    ? NSColor(white: 0.28, alpha: 1.0)
+                                    : NSColor(white: 0.96, alpha: 1.0)
+                            }),
+                            Color(nsColor: NSColor(name: nil) { appearance in
+                                appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                                    ? NSColor(white: 0.18, alpha: 1.0)
+                                    : NSColor(white: 0.86, alpha: 1.0)
+                            })
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(
+                    Color(nsColor: NSColor(name: nil) { appearance in
+                        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                            ? NSColor(white: 1.0, alpha: 0.12)
+                            : NSColor(white: 0.0, alpha: 0.10)
+                    }),
+                    lineWidth: 0.8
+                )
+
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 }
 
