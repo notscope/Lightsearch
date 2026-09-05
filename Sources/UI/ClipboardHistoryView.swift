@@ -240,8 +240,8 @@ struct ClipboardHistoryView: View {
                 VStack(spacing: 0) {
                     ClipboardPreview(entry: entry)
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
+                        .padding(.horizontal, LauncherMetrics.footerHorizontalInset)
+                        .padding(.top, LauncherMetrics.footerHorizontalInset)
 
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: 7) {
@@ -251,8 +251,8 @@ struct ClipboardHistoryView: View {
 
                             information(for: entry)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        .padding(.horizontal, LauncherMetrics.footerHorizontalInset)
+                        .padding(.bottom, LauncherMetrics.footerHorizontalInset)
                     }
                     .scrollIndicators(.automatic)
                 }
@@ -895,7 +895,6 @@ private struct ClipboardPreview: View {
                 .foregroundStyle(.white)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel(entry.previewText ?? "Rich text preview")
