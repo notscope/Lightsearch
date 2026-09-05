@@ -59,6 +59,17 @@ struct KeyboardHintBadge: View {
         self.style = style
     }
 
+    private var isSingleCharacterOrIcon: Bool {
+        switch content {
+        case let .text(text, _):
+            return text.count <= 1
+        case .systemImage:
+            return true
+        case .custom:
+            return false
+        }
+    }
+
     var body: some View {
         Group {
             switch content {
@@ -78,8 +89,12 @@ struct KeyboardHintBadge: View {
                 customView
             }
         }
-        .frame(minWidth: style.height, minHeight: style.height)
-        .padding(.horizontal, horizontalPadding)
+        .padding(.horizontal, isSingleCharacterOrIcon ? 0 : 5)
+        .frame(
+            width: isSingleCharacterOrIcon ? style.height : nil,
+            height: style.height
+        )
+        .frame(minWidth: isSingleCharacterOrIcon ? nil : style.height)
         .background {
             RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
                 .fill(Color.primary.opacity(0.08))
@@ -87,17 +102,6 @@ struct KeyboardHintBadge: View {
         .overlay {
             RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.8)
-        }
-    }
-
-    private var horizontalPadding: CGFloat {
-        switch content {
-        case let .text(text, _):
-            return text.count > 1 ? 5 : 2
-        case .systemImage:
-            return 2
-        case .custom:
-            return 4
         }
     }
 }
