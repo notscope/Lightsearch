@@ -204,7 +204,7 @@ struct ContentView: View {
                         results
                     }
                 }
-                .padding(.horizontal, LauncherMetrics.horizontalInset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
@@ -302,6 +302,7 @@ struct ContentView: View {
                                 .id(result.id)
                         }
                     }
+                    .padding(.horizontal, LauncherMetrics.horizontalInset)
                 }
                 .contentMargins(.vertical, LauncherMetrics.verticalInset, for: .scrollContent)
                 .onChange(of: state.selectedIndex) { _, newIndex in
@@ -461,6 +462,7 @@ struct ContentView: View {
                                 .foregroundStyle(.tertiary)
                         }
                     }
+                    .padding(.horizontal, LauncherMetrics.horizontalInset)
                     .padding(.top, 12)
 
                     ScrollViewReader { proxy in
@@ -487,6 +489,7 @@ struct ContentView: View {
                                     .id(file.id)
                                 }
                             }
+                            .padding(.horizontal, LauncherMetrics.horizontalInset)
                         }
                         .contentMargins(.bottom, 12, for: .scrollContent)
                         .onChange(of: state.selectedIndex) { _, newIndex in
@@ -515,6 +518,7 @@ struct ContentView: View {
 
                         Spacer()
                     }
+                    .padding(.horizontal, LauncherMetrics.horizontalInset)
                     .padding(.top, 12)
 
                     ScrollViewReader { proxy in
@@ -543,6 +547,7 @@ struct ContentView: View {
                                     .id(file.id)
                                 }
                             }
+                            .padding(.horizontal, LauncherMetrics.horizontalInset)
                         }
                         .contentMargins(.bottom, 12, for: .scrollContent)
                         .onChange(of: state.selectedIndex) { _, newIndex in
