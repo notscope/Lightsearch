@@ -73,6 +73,9 @@ final class PerformanceBenchmarkTests: XCTestCase {
         if apps.contains(where: { $0.name == "SF Symbols" }) {
             let sfResults = ApplicationSearch.rankedResults(apps, query: "sf sym")
             XCTAssertEqual(sfResults.first?.name, "SF Symbols", "'SF Symbols' should be the top match for 'sf sym'")
+
+            let fullResults = ApplicationSearch.rankedResults(apps, query: "sf symbols")
+            XCTAssertEqual(fullResults.first?.name, "SF Symbols", "'SF Symbols' should be the top match for 'sf symbols'")
         }
 
         if apps.contains(where: { $0.name == "Icon Composer" }) {
