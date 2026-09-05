@@ -205,9 +205,8 @@ struct ClipboardHistoryView: View {
                             }
                         }
                         .padding(.horizontal, 12)
-                        .padding(.top, 12)
-                        .padding(.bottom, 12)
                     }
+                    .contentMargins(.vertical, LauncherMetrics.verticalInset, for: .scrollContent)
                     .scrollIndicators(.never)
                     .onChange(of: state.selectedIndex) { _, newIndex in
                         guard state.visibleClipboardEntries.indices.contains(newIndex) else { return }
