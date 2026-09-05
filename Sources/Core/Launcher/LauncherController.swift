@@ -77,6 +77,9 @@ final class LauncherController: NSObject, NSWindowDelegate {
                 onPasteClipboardEntry: { [weak self] entry in
                     self?.pasteClipboardEntry(entry)
                 },
+                onCopyClipboardEntry: { [weak self] entry in
+                    self?.copyClipboardEntryToPasteboard(entry)
+                },
                 onClipboardActionsPresentedChanged: { [weak self] isPresented in
                     self?.isClipboardActionsPresented = isPresented
                 },
@@ -270,6 +273,21 @@ final class LauncherController: NSObject, NSWindowDelegate {
         hide()
     }
 
+    private func copyClipboardEntryToPasteboard(_ entry: ClipboardEntry) {
+        guard state.writeClipboardEntryToPasteboard(entry) else { return }
+
+        let targetApplication = pasteTargetApplication
+        hide()
+
+        guard let targetApplication,
+              !targetApplication.isTerminated,
+              targetApplication.processIdentifier != ProcessInfo.processInfo.processIdentifier else {
+            return
+        }
+
+        targetApplication.activate(options: [])
+    }
+
     private func pasteClipboardEntry(_ entry: ClipboardEntry) {
         guard state.writeClipboardEntryToPasteboard(entry) else { return }
 
@@ -406,6 +424,19 @@ final class LauncherController: NSObject, NSWindowDelegate {
                     }
                 }
                 return nil
+            case UInt16(kVK_ANSI_C) where event.modifierFlags.contains(.command):
+                if self.state.isClipboardPage && !self.isClipboardActionsPresented {
+                    if let searchField = self.searchField,
+                       let editor = searchField.currentEditor() as? NSTextView,
+                       editor.selectedRange().length > 0 {
+                        return event
+                    }
+                    if let entry = self.state.selectedClipboardEntry() {
+                        self.copyClipboardEntryToPasteboard(entry)
+                        return nil
+                    }
+                }
+                return event
             default:
                 return event
             }

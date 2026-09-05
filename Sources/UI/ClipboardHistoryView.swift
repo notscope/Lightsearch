@@ -8,6 +8,7 @@ import AppKit
 import SwiftUI
 
 private enum ClipboardAction: CaseIterable, Hashable {
+    case pasteToClipboard
     case pin
     case delete
     case capture
@@ -24,6 +25,7 @@ struct ClipboardHistoryView: View {
 
     let onBack: () -> Void
     let onPaste: (ClipboardEntry) -> Void
+    let onCopy: (ClipboardEntry) -> Void
     let onSearchFieldReady: (NSSearchField) -> Void
     let onActionsPresentedChanged: (Bool) -> Void
 
@@ -41,7 +43,7 @@ struct ClipboardHistoryView: View {
                     .frame(height: LauncherMetrics.collapsedHeight)
 
                 Rectangle()
-                    .fill(Color(nsColor: .separatorColor))
+                    .fill(LauncherMetrics.dividerColor)
                     .frame(height: LauncherMetrics.dividerHeight)
 
                 if groupedEntries.isEmpty {
@@ -53,7 +55,7 @@ struct ClipboardHistoryView: View {
                             .frame(width: LauncherMetrics.clipboardListWidth)
 
                         Rectangle()
-                            .fill(Color(nsColor: .separatorColor))
+                            .fill(LauncherMetrics.dividerColor)
                             .frame(width: LauncherMetrics.dividerHeight)
 
                         clipboardDetails
@@ -62,7 +64,7 @@ struct ClipboardHistoryView: View {
                 }
 
                 Rectangle()
-                    .fill(Color(nsColor: .separatorColor))
+                    .fill(LauncherMetrics.dividerColor)
                     .frame(height: LauncherMetrics.dividerHeight)
 
                 clipboardFooter
@@ -106,7 +108,7 @@ struct ClipboardHistoryView: View {
         }
         .onChange(of: isActionsPresented) { _, isPresented in
             onActionsPresentedChanged(isPresented || isClearConfirmationPresented)
-            focusedAction = isPresented ? .pin : nil
+            focusedAction = isPresented ? .pasteToClipboard : nil
         }
         .onChange(of: isClearConfirmationPresented) { _, isPresented in
             onActionsPresentedChanged(isPresented || isActionsPresented)
@@ -432,6 +434,14 @@ struct ClipboardHistoryView: View {
     private func actionPopover(for entry: ClipboardEntry) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             actionButton(
+                .pasteToClipboard,
+                title: "Paste to Clipboard",
+                systemImage: "doc.on.clipboard",
+                entry: entry
+            )
+            .keyboardShortcut("c", modifiers: .command)
+
+            actionButton(
                 .pin,
                 title: entry.isPinned ? "Unpin Entry" : "Pin Entry",
                 systemImage: entry.isPinned ? "pin.slash" : "pin",
@@ -447,7 +457,11 @@ struct ClipboardHistoryView: View {
             )
             .keyboardShortcut(.delete, modifiers: [])
 
-            Divider()
+            Rectangle()
+                .fill(LauncherMetrics.dividerColor)
+                .frame(height: 1)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
 
             actionButton(
                 .capture,
@@ -465,7 +479,7 @@ struct ClipboardHistoryView: View {
             )
         }
         .padding(10)
-        .frame(width: 190, alignment: .leading)
+        .frame(width: 200, alignment: .leading)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -486,7 +500,7 @@ struct ClipboardHistoryView: View {
             handleActionKeyPress(press)
         }
         .onAppear {
-            focusedAction = .pin
+            focusedAction = .pasteToClipboard
         }
         .onDisappear {
             if !isClearConfirmationPresented {
@@ -689,7 +703,7 @@ struct ClipboardHistoryView: View {
     private func moveAction(by offset: Int) {
         guard let focusedAction,
               let currentIndex = ClipboardAction.allCases.firstIndex(of: focusedAction) else {
-            self.focusedAction = .pin
+            self.focusedAction = .pasteToClipboard
             return
         }
 
@@ -706,6 +720,8 @@ struct ClipboardHistoryView: View {
         dismissActions()
 
         switch action {
+        case .pasteToClipboard:
+            onCopy(entry)
         case .pin:
             state.toggleClipboardPin(for: entry.id)
         case .delete:

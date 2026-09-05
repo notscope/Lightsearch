@@ -12,6 +12,9 @@ enum LauncherMetrics {
     static let clipboardListWidth: CGFloat = 300
     static let collapsedHeight: CGFloat = 64
     static let dividerHeight: CGFloat = 1
+    static var dividerColor: Color {
+        Color.primary.opacity(0.10)
+    }
     static let rowHeight: CGFloat = 54
     static let rowSpacing: CGFloat = 5
     static let conversionLabelHeight: CGFloat = 28
@@ -93,6 +96,7 @@ struct ContentView: View {
     let onBackFromClipboardHistory: () -> Void
     let onStartColorPicker: () -> Void
     let onPasteClipboardEntry: (ClipboardEntry) -> Void
+    let onCopyClipboardEntry: (ClipboardEntry) -> Void
     let onClipboardActionsPresentedChanged: (Bool) -> Void
     let onOpenFile: (SearchFile) -> Void
     let onCopyConversion: (ConversionResult) -> Void
@@ -109,6 +113,7 @@ struct ContentView: View {
         onBackFromClipboardHistory: @escaping () -> Void = {},
         onStartColorPicker: @escaping () -> Void = {},
         onPasteClipboardEntry: @escaping (ClipboardEntry) -> Void = { _ in },
+        onCopyClipboardEntry: @escaping (ClipboardEntry) -> Void = { _ in },
         onClipboardActionsPresentedChanged: @escaping (Bool) -> Void = { _ in },
         onOpenFile: @escaping (SearchFile) -> Void = { _ in },
         onCopyConversion: @escaping (ConversionResult) -> Void = { _ in },
@@ -124,6 +129,7 @@ struct ContentView: View {
         self.onBackFromClipboardHistory = onBackFromClipboardHistory
         self.onStartColorPicker = onStartColorPicker
         self.onPasteClipboardEntry = onPasteClipboardEntry
+        self.onCopyClipboardEntry = onCopyClipboardEntry
         self.onClipboardActionsPresentedChanged = onClipboardActionsPresentedChanged
         self.onOpenFile = onOpenFile
         self.onCopyConversion = onCopyConversion
@@ -138,6 +144,7 @@ struct ContentView: View {
                     state: state,
                     onBack: onBackFromClipboardHistory,
                     onPaste: onPasteClipboardEntry,
+                    onCopy: onCopyClipboardEntry,
                     onSearchFieldReady: onSearchFieldReady,
                     onActionsPresentedChanged: onClipboardActionsPresentedChanged
                 )
@@ -155,7 +162,7 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: LauncherMetrics.cornerRadius, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.8)
+                .strokeBorder(LauncherMetrics.dividerColor, lineWidth: 0.8)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
@@ -184,7 +191,7 @@ struct ContentView: View {
 
             if showsExpandedContent {
                 Rectangle()
-                    .fill(Color(nsColor: .separatorColor))
+                    .fill(LauncherMetrics.dividerColor)
                     .frame(height: LauncherMetrics.dividerHeight)
 
                 Group {
@@ -640,7 +647,7 @@ private struct RecentFileCard: View {
         .overlay {
             RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
                 .strokeBorder(
-                    isSelected ? Color.clear : Color(nsColor: .separatorColor).opacity(0.4),
+                    isSelected ? Color.clear : LauncherMetrics.dividerColor,
                     lineWidth: 0.7
                 )
         }
