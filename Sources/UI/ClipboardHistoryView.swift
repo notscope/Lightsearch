@@ -29,6 +29,8 @@ struct ClipboardHistoryView: View {
 
     @State private var isActionsPresented = false
     @State private var isClearConfirmationPresented = false
+    @State private var isHoveringPaste = false
+    @State private var isHoveringActions = false
     @FocusState private var focusedAction: ClipboardAction?
     @FocusState private var focusedConfirmationAction: ClipboardConfirmationAction?
 
@@ -77,7 +79,7 @@ struct ClipboardHistoryView: View {
                     .zIndex(1)
 
                 actionPopover(for: entry)
-                    .padding(.trailing, 18)
+                    .padding(.trailing, 22)
                     .padding(
                         .bottom,
                         LauncherMetrics.clipboardFooterHeight
@@ -247,14 +249,13 @@ struct ClipboardHistoryView: View {
     private var clipboardFooter: some View {
         HStack(spacing: 0) {
             clipboardFooterLabel
-                .frame(width: LauncherMetrics.clipboardListWidth, alignment: .leading)
-                .padding(.leading, 18)
+                .padding(.leading, 22)
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 16)
 
             if let entry = state.selectedClipboardEntry() {
                 clipboardActionBar(for: entry)
-                    .padding(.trailing, 18)
+                    .padding(.trailing, 22)
             }
         }
         .frame(height: LauncherMetrics.clipboardFooterHeight)
@@ -377,38 +378,62 @@ struct ClipboardHistoryView: View {
             Button {
                 onPaste(entry)
             } label: {
-                HStack(spacing: 10) {
+                HStack(spacing: 6) {
                     Text("Paste to \(state.clipboardTargetApplicationName)")
-                        .font(.callout.weight(.semibold))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                     KeycapView(symbol: "↵")
                 }
+                .padding(.leading, 9)
+                .padding(.trailing, 7)
+                .frame(maxHeight: .infinity)
+                .background(isHoveringPaste ? Color.primary.opacity(0.06) : Color.clear)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 13)
-            .padding(.vertical, 8)
+            .onHover { isHoveringPaste = $0 }
             .accessibilityLabel("Paste to \(state.clipboardTargetApplicationName)")
 
             Rectangle()
-                .fill(Color.primary.opacity(0.15))
-                .frame(width: 1, height: 24)
+                .fill(Color.primary.opacity(0.12))
+                .frame(width: 1, height: 14)
 
             Button {
                 isActionsPresented.toggle()
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Text("Actions")
-                        .font(.callout.weight(.medium))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.primary.opacity(0.85))
                     KeycapView(symbol: "⌘K")
                 }
-                .foregroundStyle(.secondary)
+                .padding(.leading, 7)
+                .padding(.trailing, 9)
+                .frame(maxHeight: .infinity)
+                .background(
+                    isHoveringActions || isActionsPresented
+                        ? Color.primary.opacity(0.08)
+                        : Color.clear
+                )
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .onHover { isHoveringActions = $0 }
             .keyboardShortcut("k", modifiers: .command)
             .accessibilityLabel("Clipboard actions")
         }
+        .frame(height: 28)
+        .background {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.7)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 
     private func actionPopover(for entry: ClipboardEntry) -> some View {
@@ -703,14 +728,16 @@ struct ClipboardHistoryView: View {
     }
 
     private var clipboardFooterLabel: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "clipboard.fill")
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(.orange)
+        HStack(spacing: 7) {
+            Image(systemName: "clipboard")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
             Text("Clipboard History")
-                .font(.callout.weight(.medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Clipboard History")
     }
 
     private var clipboardEmptyState: some View {
@@ -1020,15 +1047,16 @@ private struct KeycapView: View {
 
     var body: some View {
         Text(symbol)
-            .font(.system(.caption, design: .rounded).weight(.medium))
-            .frame(minWidth: 23, minHeight: 22)
-            .padding(.horizontal, 2)
+            .font(.system(size: 11, weight: .medium, design: .rounded))
+            .foregroundStyle(Color.primary.opacity(0.85))
+            .frame(minWidth: 19, minHeight: 19)
+            .padding(.horizontal, symbol.count > 1 ? 4 : 2)
             .background {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.primary.opacity(0.09))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.7)
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.14), lineWidth: 0.6)
                     }
             }
     }
