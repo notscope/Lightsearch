@@ -23,7 +23,7 @@ enum LauncherMetrics {
     static let clipboardPreviewHeight: CGFloat = 200
     static let clipboardFooterHeight: CGFloat = 40
     static let verticalInset: CGFloat = 12
-    static let cornerRadius: CGFloat = 32
+    static let cornerRadius: CGFloat = 16
     static let visibleEntryCount: Int = 7
 
     /// A conversion card occupies the same vertical space as two rows.
