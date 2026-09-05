@@ -553,6 +553,7 @@ struct ClipboardHistoryView: View {
         .buttonStyle(.plain)
         .focusable()
         .focused($focusedConfirmationAction, equals: action)
+        .focusEffectDisabled()
         .onKeyPress(
             keys: [
                 .leftArrow,
@@ -649,6 +650,7 @@ struct ClipboardHistoryView: View {
         .buttonStyle(.plain)
         .focusable()
         .focused($focusedAction, equals: action)
+        .focusEffectDisabled()
     }
 
     private func handleActionKeyPress(_ press: KeyPress) -> KeyPress.Result {
