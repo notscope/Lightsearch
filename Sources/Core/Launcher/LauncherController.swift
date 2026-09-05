@@ -14,6 +14,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     private let state = LauncherState()
     private let hotKey = GlobalHotKey()
     private var localKeyMonitor: Any?
+    private var localFlagsMonitor: Any?
     private var searchField: NSSearchField?
     private var focusRetryScheduled = false
     private var pasteTargetApplication: NSRunningApplication?
@@ -122,6 +123,10 @@ final class LauncherController: NSObject, NSWindowDelegate {
             NSEvent.removeMonitor(localKeyMonitor)
             self.localKeyMonitor = nil
         }
+        if let localFlagsMonitor {
+            NSEvent.removeMonitor(localFlagsMonitor)
+            self.localFlagsMonitor = nil
+        }
     }
 
     func toggle() {
@@ -133,6 +138,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     func show() {
+        state.isCommandPressed = NSEvent.modifierFlags.contains(.command)
         rememberPasteTargetApplication()
         state.loadIfNeeded()
         state.resetForPresentation()
@@ -216,6 +222,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     func hide() {
+        state.isCommandPressed = false
         colorPickerController.cancel()
         guard panel.isVisible else { return }
         panel.orderOut(nil)
@@ -365,9 +372,30 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     private func installLocalKeyMonitor() {
+        localFlagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            guard let self, self.panel.isVisible else {
+                return event
+            }
+            let isCmd = event.modifierFlags.contains(.command)
+            if self.state.isCommandPressed != isCmd {
+                self.state.isCommandPressed = isCmd
+            }
+            return event
+        }
+
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.panel.isVisible, event.window === self.panel else {
                 return event
+            }
+
+            if event.modifierFlags.contains(.command),
+               let chars = event.charactersIgnoringModifiers,
+               let digit = Int(chars),
+               digit >= 1 && digit <= LauncherMetrics.visibleEntryCount {
+                let targetIndex = digit - 1
+                if self.openEntry(at: targetIndex) {
+                    return nil
+                }
             }
 
             switch event.keyCode {
@@ -406,21 +434,8 @@ final class LauncherController: NSObject, NSWindowDelegate {
                         self.pasteClipboardEntry(entry)
                     }
                 } else {
-                    switch self.state.selectedResult() {
-                    case let .conversion(conversion):
-                        self.copy(conversion)
-                    case let .systemPreference(preference):
-                        self.open(preference)
-                    case .fileSearch:
-                        self.enterFileSearch()
-                    case .clipboardHistory:
-                        self.enterClipboardHistory()
-                    case .colorPicker:
-                        self.startColorPicker()
-                    case let .application(application):
-                        self.open(application)
-                    case nil:
-                        break
+                    if let result = self.state.selectedResult() {
+                        self.openResult(result)
                     }
                 }
                 return nil
@@ -443,7 +458,47 @@ final class LauncherController: NSObject, NSWindowDelegate {
         }
     }
 
+    @discardableResult
+    private func openEntry(at index: Int) -> Bool {
+        if isClipboardActionsPresented {
+            return false
+        }
+        if state.isFileSearchPage {
+            let files = state.visibleFileResults
+            guard index < files.count else { return false }
+            open(files[index])
+            return true
+        } else if state.isClipboardPage {
+            let entries = state.visibleClipboardEntries
+            guard index < entries.count else { return false }
+            pasteClipboardEntry(entries[index])
+            return true
+        } else {
+            guard let result = state.result(at: index) else { return false }
+            openResult(result)
+            return true
+        }
+    }
+
+    private func openResult(_ result: LauncherResult) {
+        switch result {
+        case let .conversion(conversion):
+            copy(conversion)
+        case let .systemPreference(preference):
+            open(preference)
+        case .fileSearch:
+            enterFileSearch()
+        case .clipboardHistory:
+            enterClipboardHistory()
+        case .colorPicker:
+            startColorPicker()
+        case let .application(application):
+            open(application)
+        }
+    }
+
     func windowDidResignKey(_ notification: Notification) {
+        state.isCommandPressed = false
         // Keep the panel visible while AppKit is moving focus between the
         // search field and its child controls. applicationDidResignActive is
         // the actual outside-click boundary.

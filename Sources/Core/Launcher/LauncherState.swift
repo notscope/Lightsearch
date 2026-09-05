@@ -22,6 +22,7 @@ final class LauncherState: ObservableObject {
     @Published private(set) var applications: [InstalledApplication]
     @Published private(set) var isLoading = true
     @Published var selectedIndex = 0
+    @Published var isCommandPressed = false
 
     private var hasStartedLoading = false
     private let launchHistory = ApplicationLaunchHistory()
@@ -148,6 +149,12 @@ final class LauncherState: ObservableObject {
 
         let nextIndex = selectedIndex + offset
         selectedIndex = ((nextIndex % count) + count) % count
+    }
+
+    func result(at index: Int) -> LauncherResult? {
+        guard page == .applications else { return nil }
+        guard visibleResults.indices.contains(index) else { return nil }
+        return visibleResults[index]
     }
 
     func selectedResult() -> LauncherResult? {

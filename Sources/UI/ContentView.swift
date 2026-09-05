@@ -315,11 +315,15 @@ struct ContentView: View {
 
     @ViewBuilder
     private func resultRow(_ result: LauncherResult, at index: Int) -> some View {
+        let shortcutNumber = index < LauncherMetrics.visibleEntryCount ? index + 1 : nil
+        let isCommandPressed = state.isCommandPressed
         switch result {
         case let .conversion(conversion):
             ConversionResultCard(
                 conversion: conversion,
                 isSelected: state.selectedIndex == index,
+                shortcutNumber: shortcutNumber,
+                isCommandPressed: isCommandPressed,
                 onSelect: {
                     state.selectedIndex = index
                 },
@@ -335,6 +339,8 @@ struct ContentView: View {
                 kind: "System Setting",
                 icon: WorkspaceIconView(path: preference.iconPath),
                 isSelected: state.selectedIndex == index,
+                shortcutNumber: shortcutNumber,
+                isCommandPressed: isCommandPressed,
                 accessibilityHint: "Opens this setting in System Settings",
                 onSelect: {
                     state.selectedIndex = index
@@ -351,6 +357,8 @@ struct ContentView: View {
                 kind: "Action",
                 icon: ActionIconView(systemName: "doc.text.magnifyingglass"),
                 isSelected: state.selectedIndex == index,
+                shortcutNumber: shortcutNumber,
+                isCommandPressed: isCommandPressed,
                 accessibilityHint: "Search files and folders",
                 onSelect: {
                     state.selectedIndex = index
@@ -367,6 +375,8 @@ struct ContentView: View {
                 kind: "Action",
                 icon: ActionIconView(systemName: "clipboard"),
                 isSelected: state.selectedIndex == index,
+                shortcutNumber: shortcutNumber,
+                isCommandPressed: isCommandPressed,
                 accessibilityHint: "Opens clipboard history",
                 onSelect: {
                     state.selectedIndex = index
@@ -383,6 +393,8 @@ struct ContentView: View {
                 kind: "Action",
                 icon: ActionIconView(systemName: "eyedropper"),
                 isSelected: state.selectedIndex == index,
+                shortcutNumber: shortcutNumber,
+                isCommandPressed: isCommandPressed,
                 accessibilityHint: "Picks a color from the screen",
                 onSelect: {
                     state.selectedIndex = index
@@ -399,6 +411,8 @@ struct ContentView: View {
                 kind: "Application",
                 icon: WorkspaceIconView(path: application.path),
                 isSelected: state.selectedIndex == index,
+                shortcutNumber: shortcutNumber,
+                isCommandPressed: isCommandPressed,
                 accessibilityHint: "Opens the application",
                 onSelect: {
                     state.selectedIndex = index
@@ -458,6 +472,8 @@ struct ContentView: View {
                                     kind: file.isDirectory ? "Folder" : "File",
                                     icon: WorkspaceIconView(path: file.path),
                                     isSelected: state.selectedIndex == index,
+                                    shortcutNumber: index < LauncherMetrics.visibleEntryCount ? index + 1 : nil,
+                                    isCommandPressed: state.isCommandPressed,
                                     accessibilityHint: file.isDirectory ? "Opens the folder" : "Opens the file",
                                     onSelect: {
                                         state.selectedIndex = index
@@ -512,6 +528,8 @@ struct ContentView: View {
                                 RecentFileCard(
                                     file: file,
                                     isSelected: state.selectedIndex == index,
+                                    shortcutNumber: index < LauncherMetrics.visibleEntryCount ? index + 1 : nil,
+                                    isCommandPressed: state.isCommandPressed,
                                     onSelect: {
                                         state.selectedIndex = index
                                     },
@@ -603,6 +621,8 @@ struct ContentView: View {
 private struct RecentFileCard: View {
     let file: SearchFile
     let isSelected: Bool
+    var shortcutNumber: Int? = nil
+    var isCommandPressed: Bool = false
     let onSelect: () -> Void
     let onOpen: () -> Void
 
@@ -623,7 +643,9 @@ private struct RecentFileCard: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            if isSelected {
+            if isCommandPressed, let shortcutNumber {
+                ShortcutNumberBadge(number: shortcutNumber)
+            } else if isSelected {
                 HStack(spacing: 7) {
                     Image(systemName: "return")
                         .font(.subheadline.weight(.medium))
@@ -661,9 +683,30 @@ private struct RecentFileCard: View {
     }
 }
 
+private struct ShortcutNumberBadge: View {
+    let number: Int
+
+    var body: some View {
+        Text("\(number)")
+            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .frame(width: 22, height: 22)
+            .background {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.primary.opacity(0.08))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.8)
+            }
+    }
+}
+
 private struct ConversionResultCard: View {
     let conversion: ConversionResult
     let isSelected: Bool
+    var shortcutNumber: Int? = nil
+    var isCommandPressed: Bool = false
     let onSelect: () -> Void
     let onOpen: () -> Void
 
@@ -695,6 +738,12 @@ private struct ConversionResultCard: View {
                 .textCase(.uppercase)
                 .tracking(0.8)
                 .padding(.bottom, 6)
+        }
+        .overlay(alignment: .topTrailing) {
+            if isCommandPressed, let shortcutNumber {
+                ShortcutNumberBadge(number: shortcutNumber)
+                    .padding(8)
+            }
         }
         .background {
             RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
@@ -745,6 +794,8 @@ private struct SearchResultRow<Icon: View>: View {
     var kind: String? = nil
     let icon: Icon
     let isSelected: Bool
+    var shortcutNumber: Int? = nil
+    var isCommandPressed: Bool = false
     let accessibilityHint: String
     let onSelect: () -> Void
     let onOpen: () -> Void
@@ -770,7 +821,9 @@ private struct SearchResultRow<Icon: View>: View {
 
             Spacer(minLength: 12)
 
-            if isSelected {
+            if isCommandPressed, let shortcutNumber {
+                ShortcutNumberBadge(number: shortcutNumber)
+            } else if isSelected {
                 HStack(spacing: 7) {
                     Image(systemName: "return")
                         .font(.subheadline.weight(.medium))
