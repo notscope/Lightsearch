@@ -15,6 +15,9 @@ enum LauncherMetrics {
     static var dividerColor: Color {
         Color.primary.opacity(0.10)
     }
+    static var selectionColor: Color {
+        Color.primary.opacity(0.14)
+    }
     static let rowHeight: CGFloat = 54
     static let rowSpacing: CGFloat = 5
     static let conversionLabelHeight: CGFloat = 28
@@ -642,7 +645,7 @@ private struct RecentFileCard: View {
         .frame(maxWidth: .infinity, minHeight: 104, maxHeight: 104, alignment: .topLeading)
         .background {
             RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
-                .fill(isSelected ? Color.accentColor : Color.clear)
+                .fill(isSelected ? LauncherMetrics.selectionColor : Color.clear)
         }
         .overlay {
             RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
@@ -701,7 +704,7 @@ private struct ConversionResultCard: View {
         }
         .background {
             RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
-                .fill(isSelected ? Color.accentColor : Color.conversionContainerBackground)
+                .fill(isSelected ? LauncherMetrics.selectionColor : Color.conversionContainerBackground)
         }
         .clipShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
@@ -734,7 +737,7 @@ private struct ConversionResultCard: View {
                 .padding(.vertical, 3)
                 .background {
                     Capsule()
-                        .fill(isSelected ? Color.white.opacity(0.2) : Color.conversionPillBackground)
+                        .fill(isSelected ? Color.primary.opacity(0.18) : Color.conversionPillBackground)
                 }
         }
         .frame(maxWidth: .infinity)
@@ -766,8 +769,7 @@ private struct SearchResultRow<Icon: View>: View {
                 if let subtitle {
                     Text(subtitle)
                         .font(.system(.subheadline, design: .monospaced))
-                        .foregroundStyle(isSelected ? .primary : .secondary)
-                        .opacity(isSelected ? 0.85 : 1.0)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }
@@ -796,7 +798,7 @@ private struct SearchResultRow<Icon: View>: View {
         .frame(height: LauncherMetrics.rowHeight)
         .background {
             RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
-                .fill(isSelected ? Color.accentColor : Color.clear)
+                .fill(isSelected ? LauncherMetrics.selectionColor : Color.clear)
         }
         .contentShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
         .overlay {
@@ -956,7 +958,15 @@ struct SearchFieldRepresentable: NSViewRepresentable {
     }
 }
 
-private extension Color {
+extension Color {
+    static var launcherSelection: Color {
+        LauncherMetrics.selectionColor
+    }
+
+    static var launcherDivider: Color {
+        LauncherMetrics.dividerColor
+    }
+
     static let conversionContainerBackground = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             ? NSColor(white: 1.0, alpha: 0.10)

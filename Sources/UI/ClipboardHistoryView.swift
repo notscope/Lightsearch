@@ -657,7 +657,7 @@ struct ClipboardHistoryView: View {
                 .frame(height: 32)
                 .background(
                     focusedAction == action
-                        ? Color.primary.opacity(0.14)
+                        ? LauncherMetrics.selectionColor
                         : Color.clear,
                     in: RoundedRectangle(cornerRadius: 7, style: .continuous)
                 )
@@ -838,7 +838,7 @@ private struct ClipboardEntryRow: View {
         .frame(height: 48)
         .background {
             RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
-                .fill(isSelected ? Color.primary.opacity(0.14) : Color.clear)
+                .fill(isSelected ? LauncherMetrics.selectionColor : Color.clear)
         }
         .contentShape(RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous))
         .overlay {
