@@ -1124,26 +1124,6 @@ private struct ClipboardSourceIcon: View {
     }
 }
 
-private struct KeycapView: View {
-    let symbol: String
-
-    var body: some View {
-        Text(symbol)
-            .font(.system(size: 11, weight: .medium, design: .rounded))
-            .foregroundStyle(Color.primary.opacity(0.85))
-            .frame(minWidth: 19, minHeight: 19)
-            .padding(.horizontal, symbol.count > 1 ? 4 : 2)
-            .background {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color.primary.opacity(0.09))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.14), lineWidth: 0.6)
-                    }
-            }
-    }
-}
-
 private struct ClipboardClickTargetRepresentable: NSViewRepresentable {
     let onSingleClick: () -> Void
     let onDoubleClick: () -> Void

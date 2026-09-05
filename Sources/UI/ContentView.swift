@@ -644,7 +644,7 @@ private struct RecentFileCard: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             if isCommandPressed, let shortcutNumber {
-                ShortcutNumberBadge(number: shortcutNumber)
+                KeyboardHintBadge(shortcutNumber)
             } else if isSelected {
                 HStack(spacing: 7) {
                     Image(systemName: "return")
@@ -683,24 +683,6 @@ private struct RecentFileCard: View {
     }
 }
 
-private struct ShortcutNumberBadge: View {
-    let number: Int
-
-    var body: some View {
-        Text("\(number)")
-            .font(.system(size: 12, weight: .semibold, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .frame(width: 22, height: 22)
-            .background {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.8)
-            }
-    }
-}
 
 private struct ConversionResultCard: View {
     let conversion: ConversionResult
@@ -741,7 +723,7 @@ private struct ConversionResultCard: View {
         }
         .overlay(alignment: .topTrailing) {
             if isCommandPressed, let shortcutNumber {
-                ShortcutNumberBadge(number: shortcutNumber)
+                KeyboardHintBadge(shortcutNumber)
                     .padding(8)
             }
         }
@@ -822,7 +804,7 @@ private struct SearchResultRow<Icon: View>: View {
             Spacer(minLength: 12)
 
             if isCommandPressed, let shortcutNumber {
-                ShortcutNumberBadge(number: shortcutNumber)
+                KeyboardHintBadge(shortcutNumber)
             } else if isSelected {
                 HStack(spacing: 7) {
                     Image(systemName: "return")
