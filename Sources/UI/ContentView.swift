@@ -304,9 +304,6 @@ struct ContentView: View {
                     }
                 }
                 .contentMargins(.vertical, LauncherMetrics.verticalInset, for: .scrollContent)
-                .scrollIndicators(.visible)
-                .scrollIndicatorsFlash(trigger: state.selectedIndex)
-                .scrollIndicatorsFlash(onAppear: true)
                 .onChange(of: state.selectedIndex) { _, newIndex in
                     guard state.visibleResults.indices.contains(newIndex) else { return }
                     proxy.scrollTo(state.visibleResults[newIndex].id, anchor: nil)
@@ -492,9 +489,6 @@ struct ContentView: View {
                             }
                         }
                         .contentMargins(.bottom, 12, for: .scrollContent)
-                        .scrollIndicators(.visible)
-                        .scrollIndicatorsFlash(trigger: state.selectedIndex)
-                        .scrollIndicatorsFlash(onAppear: true)
                         .onChange(of: state.selectedIndex) { _, newIndex in
                             guard state.visibleFileResults.indices.contains(newIndex) else { return }
                             proxy.scrollTo(state.visibleFileResults[newIndex].id, anchor: nil)
@@ -551,9 +545,6 @@ struct ContentView: View {
                             }
                         }
                         .contentMargins(.bottom, 12, for: .scrollContent)
-                        .scrollIndicators(.visible)
-                        .scrollIndicatorsFlash(trigger: state.selectedIndex)
-                        .scrollIndicatorsFlash(onAppear: true)
                         .onChange(of: state.selectedIndex) { _, newIndex in
                             guard state.visibleFileResults.indices.contains(newIndex) else { return }
                             proxy.scrollTo(state.visibleFileResults[newIndex].id, anchor: nil)
