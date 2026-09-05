@@ -94,6 +94,23 @@ enum ClipboardThumbnailGenerator {
         return bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: 0.82])
             ?? bitmapRep.representation(using: .png, properties: [:])
     }
+
+    nonisolated static func downsampleToThumbnail(
+        from data: Data,
+        maxPixelSize: Int = 96
+    ) -> NSImage? {
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceShouldCacheImmediately: true
+        ]
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let cgThumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return nil
+        }
+        return NSImage(cgImage: cgThumbnail, size: NSSize(width: cgThumbnail.width, height: cgThumbnail.height))
+    }
 }
 
 enum ClipboardEntryKind: String, CaseIterable, Codable, Identifiable, Sendable {
@@ -296,6 +313,20 @@ struct ClipboardPayload: Codable, Hashable, Sendable {
     }
 
     func withImageData(_ imageData: Data) -> ClipboardPayload {
+        ClipboardPayload(
+            plainText: plainText,
+            urlData: urlData,
+            rtfData: rtfData,
+            htmlData: htmlData,
+            imageData: imageData,
+            thumbnailData: thumbnailData,
+            imageType: imageType,
+            colorHex: colorHex,
+            filePaths: filePaths
+        )
+    }
+
+    func settingThumbnailData(_ thumbnailData: Data?) -> ClipboardPayload {
         ClipboardPayload(
             plainText: plainText,
             urlData: urlData,
@@ -771,6 +802,23 @@ struct ClipboardEntry: Codable, Hashable, Identifiable, Sendable {
             id: id,
             kind: kind,
             payload: payload.withImageData(imageData),
+            fingerprint: fingerprint,
+            source: source,
+            firstCopiedAt: firstCopiedAt,
+            lastCopiedAt: lastCopiedAt,
+            copyCount: copyCount,
+            isPinned: isPinned,
+            byteCount: byteCount,
+            imageWidth: imageWidth,
+            imageHeight: imageHeight
+        )
+    }
+
+    func settingThumbnailData(_ thumbnailData: Data?) -> ClipboardEntry {
+        ClipboardEntry(
+            id: id,
+            kind: kind,
+            payload: payload.settingThumbnailData(thumbnailData),
             fingerprint: fingerprint,
             source: source,
             firstCopiedAt: firstCopiedAt,

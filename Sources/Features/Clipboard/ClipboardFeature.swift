@@ -70,22 +70,33 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
                     return updatedEntry
                 }
 
-            var migratedEntries: [ClipboardEntry] = []
-            var didMigrateAnyImage = false
-            for entry in loadedEntries {
-                if entry.kind == .image, let fullData = entry.payload.imageData {
-                    historyStore.saveImageData(fullData, for: entry.id)
-                    let thumbnail = entry.payload.thumbnailData ?? ClipboardThumbnailGenerator.makeThumbnail(from: fullData)
-                    migratedEntries.append(entry.withoutImageData(thumbnailData: thumbnail))
-                    didMigrateAnyImage = true
-                } else {
-                    migratedEntries.append(entry)
+            var rehydratedEntries: [ClipboardEntry] = []
+            var didUpdateAnyEntry = false
+            for var entry in loadedEntries {
+                if entry.kind == .image {
+                    var fullData = entry.payload.imageData
+                    if fullData == nil {
+                        fullData = historyStore.loadImageData(for: entry.id)
+                        if let fullData {
+                            entry = entry.withImageData(fullData)
+                            didUpdateAnyEntry = true
+                        }
+                    }
+                    if entry.payload.thumbnailData == nil, let data = fullData {
+                        let thumbnail = ClipboardThumbnailGenerator.makeThumbnail(from: data)
+                        entry = entry.settingThumbnailData(thumbnail)
+                        didUpdateAnyEntry = true
+                    }
+                    if let data = fullData {
+                        historyStore.saveImageData(data, for: entry.id)
+                    }
                 }
+                rehydratedEntries.append(entry)
             }
 
-            entries = migratedEntries
+            entries = rehydratedEntries
             trimHistoryToLimits()
-            if didMigrateAnyImage || entries != archive.entries {
+            if didUpdateAnyEntry || entries != archive.entries {
                 persist()
             }
             let validIDs = Set(entries.map(\.id))
@@ -299,7 +310,7 @@ final class ClipboardFeature: LauncherSearchFeature, ClipboardPageFeature {
         if rawEntry.kind == .image, let fullData = rawEntry.payload.imageData {
             historyStore.saveImageData(fullData, for: rawEntry.id)
             let thumbnail = rawEntry.payload.thumbnailData ?? ClipboardThumbnailGenerator.makeThumbnail(from: fullData)
-            newEntry = rawEntry.withoutImageData(thumbnailData: thumbnail)
+            newEntry = rawEntry.settingThumbnailData(thumbnail)
         } else {
             newEntry = rawEntry
         }

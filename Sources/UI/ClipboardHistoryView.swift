@@ -1034,7 +1034,8 @@ private enum ClipboardThumbnailCache {
         if let cached = cache.object(forKey: key) {
             return cached
         }
-        guard let image = NSImage(data: data) else { return nil }
+        guard let image = ClipboardThumbnailGenerator.downsampleToThumbnail(from: data, maxPixelSize: 96)
+            ?? NSImage(data: data) else { return nil }
         cache.setObject(image, forKey: key)
         return image
     }
@@ -1045,6 +1046,7 @@ private struct ClipboardImagePreviewView: View {
     let state: LauncherState
 
     @State private var displayImage: NSImage?
+    @State private var isLoading = true
 
     var body: some View {
         ZStack {
@@ -1053,19 +1055,20 @@ private struct ClipboardImagePreviewView: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-            } else if let thumbnailData = entry.payload.thumbnailData {
-                if let thumb = ClipboardThumbnailCache.image(for: thumbnailData) {
-                    Image(nsImage: thumb)
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                } else {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            } else {
+            } else if isLoading {
                 ProgressView()
                     .controlSize(.small)
+            } else if let thumbnailData = entry.payload.thumbnailData,
+                      let thumb = NSImage(data: thumbnailData) {
+                Image(nsImage: thumb)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(maxWidth: 160, maxHeight: 160)
+            } else {
+                Image(systemName: "photo")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.secondary)
             }
         }
         .task(id: entry.id) {
@@ -1077,31 +1080,22 @@ private struct ClipboardImagePreviewView: View {
     }
 
     private func loadPreviewImage() async {
+        isLoading = true
         let entryID = entry.id
-        guard let rawData = entry.payload.imageData ?? state.loadClipboardImageData(for: entryID) else {
+        let rawData = entry.payload.imageData ?? state.loadClipboardImageData(for: entryID)
+
+        guard let rawData else {
+            isLoading = false
             return
         }
 
         let image = await Task.detached(priority: .userInitiated) { () -> NSImage? in
-            Self.downsample(data: rawData, maxPixelSize: 1200)
+            NSImage(data: rawData)
         }.value
 
         guard !Task.isCancelled else { return }
         self.displayImage = image
-    }
-
-    private nonisolated static func downsample(data: Data, maxPixelSize: Int) -> NSImage? {
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
-            kCGImageSourceShouldCacheImmediately: true
-        ]
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-            return NSImage(data: data)
-        }
-        return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+        self.isLoading = false
     }
 }
 

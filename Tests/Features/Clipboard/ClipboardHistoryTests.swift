@@ -563,6 +563,11 @@ final class ClipboardHistoryTests: XCTestCase {
         XCTAssertGreaterThan(thumbnail?.count ?? 0, 0)
     }
 
+    func testThumbnailGeneratorDownsamplesImageCorrectly() {
+        let image = ClipboardThumbnailGenerator.downsampleToThumbnail(from: onePixelPNG, maxPixelSize: 96)
+        XCTAssertNotNil(image)
+    }
+
     func testEncryptedImageStoreSaveLoadDeleteAndPruning() {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("LightsearchImageStoreTests-\(UUID().uuidString)", isDirectory: true)
@@ -597,7 +602,7 @@ final class ClipboardHistoryTests: XCTestCase {
         XCTAssertNil(store.loadImageData(for: imageID1))
     }
 
-    func testClipboardFeatureOffloadsFullImageDataAndLoadsOnDemand() {
+    func testClipboardFeatureRetainsFullImageDataAndGeneratesThumbnail() {
         let feature = makeFeature()
         let snapshot = ClipboardSnapshot(
             types: [ClipboardSnapshot.pngType.rawValue],
@@ -615,20 +620,16 @@ final class ClipboardHistoryTests: XCTestCase {
         }
 
         XCTAssertEqual(entry.kind, .image)
-        XCTAssertNil(entry.payload.imageData, "Full image payload must be offloaded from memory")
-        XCTAssertNotNil(entry.payload.thumbnailData, "Thumbnail data must be retained in memory")
-        XCTAssertEqual(feature.loadImageData(for: entry.id), onePixelPNG, "Full image payload must be loaded on demand from encrypted store")
+        XCTAssertEqual(entry.payload.imageData, onePixelPNG, "Full image payload must be retained in memory")
+        XCTAssertNotNil(entry.payload.thumbnailData, "Thumbnail data must be generated in memory")
 
         let pasteboard = NSPasteboard.withUniqueName()
-        let didWrite = ClipboardPasteboardWriter.write(
-            entry.withImageData(feature.loadImageData(for: entry.id) ?? Data()),
-            to: pasteboard
-        )
+        let didWrite = ClipboardPasteboardWriter.write(entry, to: pasteboard)
         XCTAssertTrue(didWrite)
         XCTAssertEqual(pasteboard.data(forType: ClipboardSnapshot.pngType), onePixelPNG)
     }
 
-    func testClipboardFeatureMigratesInlineImageArchiveOnLoad() async throws {
+    func testClipboardFeatureMigratesAndRehydratesImageArchiveOnLoad() async throws {
         let suiteName = "LightsearchClipboardMigrationTests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
@@ -650,13 +651,17 @@ final class ClipboardHistoryTests: XCTestCase {
             imageType: ClipboardSnapshot.pngType.rawValue,
             source: source
         )
-        guard let legacyEntry = rawSnapshot.makeEntry() else {
+        guard let entryWithImage = rawSnapshot.makeEntry() else {
             XCTFail("Expected legacy entry")
             return
         }
-        XCTAssertNotNil(legacyEntry.payload.imageData)
 
-        let legacyArchive = ClipboardHistoryArchive(entries: [legacyEntry])
+        // Save raw image payload to disk and stripped entry to archive
+        store.saveImageData(onePixelPNG, for: entryWithImage.id)
+        store.flush()
+
+        let strippedEntry = entryWithImage.withoutImageData(thumbnailData: nil)
+        let legacyArchive = ClipboardHistoryArchive(entries: [strippedEntry])
         let encodedData = try JSONEncoder().encode(legacyArchive)
         store.saveData(encodedData)
         store.flush()
@@ -670,9 +675,8 @@ final class ClipboardHistoryTests: XCTestCase {
             return
         }
 
-        XCTAssertNil(loadedEntry.payload.imageData, "Migrated in-memory entry must have nil imageData")
-        XCTAssertNotNil(loadedEntry.payload.thumbnailData, "Migrated in-memory entry must have generated thumbnailData")
-        XCTAssertEqual(feature.loadImageData(for: loadedEntry.id), onePixelPNG, "Image data must be retrievable from encrypted image store")
+        XCTAssertEqual(loadedEntry.payload.imageData, onePixelPNG, "Missing image payload must be rehydrated from encrypted disk store on load")
+        XCTAssertNotNil(loadedEntry.payload.thumbnailData, "Thumbnail data must be generated on load")
     }
 
     private func makeFeature() -> ClipboardFeature {
