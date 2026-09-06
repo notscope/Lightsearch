@@ -112,4 +112,21 @@ final class PerformanceBenchmarkTests: XCTestCase {
 
         XCTAssertGreaterThan(matchCount, 0)
     }
+
+    func testApplicationDirectoryTimestampsAndWatcher() {
+        let directories = ApplicationDirectoryWatcher.monitoredDirectories()
+        XCTAssertTrue(directories.contains("/Applications"), "Should monitor /Applications")
+
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let timestamps = ApplicationDirectoryWatcher.currentTimestamps()
+        let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000.0
+
+        print("--- BENCHMARK: Application Directory Timestamp Check ---")
+        print(String(format: "Timestamp check time: %.4f ms", elapsed))
+        print("--------------------------------------------------------")
+
+        XCTAssertNotNil(timestamps["/Applications"], "Must have timestamp for /Applications")
+        XCTAssertGreaterThan(timestamps["/Applications"]?.seconds ?? 0, 0)
+        XCTAssertLessThan(elapsed, 5.0, "Stat-based timestamp check must complete well under 5ms")
+    }
 }

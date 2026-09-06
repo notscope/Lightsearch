@@ -25,6 +25,8 @@ final class LauncherState: ObservableObject {
     @Published var isCommandPressed = false
 
     private var hasStartedLoading = false
+    private var directoryWatcher: ApplicationDirectoryWatcher?
+    private var lastScannedDirectoryTimestamps: [String: ApplicationDirectoryTimestamp] = [:]
     private let launchHistory = ApplicationLaunchHistory()
     private let features: LauncherFeatureRegistry
     private var previousResults: [InstalledApplication] = []
@@ -131,8 +133,42 @@ final class LauncherState: ObservableObject {
             guard !Task.isCancelled else { return }
             self.applications = loadedApplications
             self.previousResults = loadedApplications
+            self.lastScannedDirectoryTimestamps = ApplicationDirectoryWatcher.currentTimestamps()
             self.isLoading = false
             self.selectedIndex = 0
+            self.startDirectoryWatcher()
+        }
+    }
+
+    private func startDirectoryWatcher() {
+        directoryWatcher = ApplicationDirectoryWatcher { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.refreshApplications()
+            }
+        }
+    }
+
+    func refreshApplicationsIfNeeded() {
+        guard hasStartedLoading else { return }
+        let currentTimestamps = ApplicationDirectoryWatcher.currentTimestamps()
+        if currentTimestamps != lastScannedDirectoryTimestamps {
+            refreshApplications()
+        }
+    }
+
+    func refreshApplications() {
+        Task { [weak self] in
+            guard let self else { return }
+            let loadedApplications = await Task.detached(priority: .userInitiated) {
+                InstalledApplicationScanner.scan()
+            }.value
+
+            guard !Task.isCancelled else { return }
+            self.lastScannedDirectoryTimestamps = ApplicationDirectoryWatcher.currentTimestamps()
+            if self.applications != loadedApplications {
+                self.applications = loadedApplications
+                self.previousResults = loadedApplications
+            }
         }
     }
 

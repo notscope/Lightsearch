@@ -488,3 +488,88 @@ enum InstalledApplicationScanner {
         )
     }
 }
+
+struct ApplicationDirectoryTimestamp: Equatable, Sendable {
+    let seconds: Int
+    let nanoseconds: Int
+}
+
+final class ApplicationDirectoryWatcher: @unchecked Sendable {
+    private var sources: [DispatchSourceFileSystemObject] = []
+    private var debounceWorkItem: DispatchWorkItem?
+    private let queue = DispatchQueue(label: "com.lightsearch.appwatcher", qos: .utility)
+    private let onChange: @Sendable () -> Void
+
+    init(onChange: @escaping @Sendable () -> Void) {
+        self.onChange = onChange
+        setupWatchers()
+    }
+
+    private func setupWatchers() {
+        let directoriesToWatch = Self.monitoredDirectories()
+
+        for path in directoriesToWatch {
+            let fd = open(path, O_EVTONLY)
+            guard fd >= 0 else { continue }
+
+            let source = DispatchSource.makeFileSystemObjectSource(
+                fileDescriptor: fd,
+                eventMask: [.write, .extend, .attrib, .link],
+                queue: queue
+            )
+
+            source.setEventHandler { [weak self] in
+                self?.scheduleDebounce()
+            }
+
+            source.setCancelHandler {
+                close(fd)
+            }
+
+            source.resume()
+            sources.append(source)
+        }
+    }
+
+    private func scheduleDebounce() {
+        debounceWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.onChange()
+        }
+        debounceWorkItem = workItem
+        // 1.0s debounce gives Finder/installers enough time to finish copying or moving bundles
+        queue.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+    }
+
+    deinit {
+        for source in sources {
+            source.cancel()
+        }
+    }
+
+    static func monitoredDirectories() -> [String] {
+        var directories = ["/Applications"]
+        if let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir {
+            let realHome = FileManager.default.string(withFileSystemRepresentation: home, length: Int(strlen(home)))
+            let userApps = (realHome as NSString).appendingPathComponent("Applications")
+            if FileManager.default.fileExists(atPath: userApps) {
+                directories.append(userApps)
+            }
+        }
+        return directories
+    }
+
+    static func currentTimestamps() -> [String: ApplicationDirectoryTimestamp] {
+        var timestamps: [String: ApplicationDirectoryTimestamp] = [:]
+        for path in monitoredDirectories() {
+            var st = stat()
+            if stat(path, &st) == 0 {
+                timestamps[path] = ApplicationDirectoryTimestamp(
+                    seconds: Int(st.st_mtimespec.tv_sec),
+                    nanoseconds: Int(st.st_mtimespec.tv_nsec)
+                )
+            }
+        }
+        return timestamps
+    }
+}

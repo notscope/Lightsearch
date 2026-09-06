@@ -141,6 +141,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
         state.isCommandPressed = NSEvent.modifierFlags.contains(.command)
         rememberPasteTargetApplication()
         state.loadIfNeeded()
+        state.refreshApplicationsIfNeeded()
         state.resetForPresentation()
         updatePanelSize(isExpanded: false)
         positionPanel()
