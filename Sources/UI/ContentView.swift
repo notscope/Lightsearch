@@ -661,15 +661,8 @@ private struct RecentFileCard: View {
             if isCommandPressed, let shortcutNumber {
                 KeyboardHintBadge(shortcutNumber)
             } else if isSelected {
-                HStack(spacing: 7) {
-                    Image(systemName: "return")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-
-                    Image(systemName: "arrow.up.right")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
+                KeyboardHintBadge.action("Open")
+                    .transition(.opacity)
             }
         }
         .padding(12)
@@ -821,16 +814,8 @@ private struct SearchResultRow<Icon: View>: View {
             if isCommandPressed, let shortcutNumber {
                 KeyboardHintBadge(shortcutNumber)
             } else if isSelected {
-                HStack(spacing: 7) {
-                    Image(systemName: "return")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-
-                    Image(systemName: "arrow.up.right")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .transition(.opacity)
-                }
+                KeyboardHintBadge.action("Open")
+                    .transition(.opacity)
             } else if let kind {
                 Text(kind)
                     .font(.subheadline)

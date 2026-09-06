@@ -28,6 +28,7 @@ struct KeyboardHintBadge: View {
     private enum Content {
         case text(String, isMonospaced: Bool)
         case systemImage(String)
+        case action(symbol: String, label: String)
         case custom(AnyView)
     }
 
@@ -54,6 +55,11 @@ struct KeyboardHintBadge: View {
         self.style = style
     }
 
+    init(action label: String, symbol: String = "return", style: Style = .regular) {
+        self.content = .action(symbol: symbol, label: label)
+        self.style = style
+    }
+
     init<V: View>(style: Style = .regular, @ViewBuilder content: () -> V) {
         self.content = .custom(AnyView(content()))
         self.style = style
@@ -65,7 +71,7 @@ struct KeyboardHintBadge: View {
             return text.count <= 1
         case .systemImage:
             return true
-        case .custom:
+        case .action, .custom:
             return false
         }
     }
@@ -85,11 +91,24 @@ struct KeyboardHintBadge: View {
                 Image(systemName: name)
                     .font(.system(size: style.fontSize - 1, weight: .semibold))
                     .foregroundStyle(.secondary)
+            case let .action(symbol, label):
+                HStack(spacing: 4) {
+                    Image(systemName: symbol)
+                        .font(.system(size: style.fontSize - 1, weight: .medium))
+
+                    Text(label)
+                        .font(.system(
+                            size: style.fontSize - 1,
+                            weight: .semibold,
+                            design: .rounded
+                        ))
+                }
+                .foregroundStyle(.secondary)
             case let .custom(customView):
                 customView
             }
         }
-        .padding(.horizontal, isSingleCharacterOrIcon ? 0 : 5)
+        .padding(.horizontal, isSingleCharacterOrIcon ? 0 : 7)
         .frame(
             width: isSingleCharacterOrIcon ? style.height : nil,
             height: style.height
@@ -107,6 +126,11 @@ struct KeyboardHintBadge: View {
 }
 
 extension KeyboardHintBadge {
+    /// Renders an action key hint badge, e.g. `KeyboardHintBadge.action("Open")`
+    static func action(_ label: String = "Open", symbol: String = "return", style: Style = .regular) -> KeyboardHintBadge {
+        KeyboardHintBadge(action: label, symbol: symbol, style: style)
+    }
+
     /// Renders a combo sequence of keyboard hints, e.g. `KeyboardHintBadge.combo("⌘", "K")`
     static func combo(_ keys: String..., style: Style = .regular) -> some View {
         HStack(spacing: 3) {
