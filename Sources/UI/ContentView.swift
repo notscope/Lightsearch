@@ -10,7 +10,7 @@ import SwiftUI
 enum LauncherMetrics {
     static let panelWidth: CGFloat = 720
     static let clipboardListWidth: CGFloat = 300
-    static let collapsedHeight: CGFloat = 48
+    static let collapsedHeight: CGFloat = 54
     static let dividerHeight: CGFloat = 1
     static var dividerColor: Color {
         Color.primary.opacity(0.10)
@@ -25,7 +25,7 @@ enum LauncherMetrics {
     static let searchBarHorizontalInset: CGFloat = 18
     static let searchBarSpacing: CGFloat = 12
     static let searchBarFieldHeight: CGFloat = 26
-    static let searchBarControlSize: CGFloat = 24
+    static let searchBarControlSize: CGFloat = 26
     static let clipboardPreviewHeight: CGFloat = 200
     static let clipboardFooterHeight: CGFloat = 40
     static let footerHorizontalInset: CGFloat = 14
@@ -240,7 +240,7 @@ struct ContentView: View {
                     .help("Back to applications")
                 } else {
                     Image(systemName: "magnifyingglass")
-                        .font(.title3.weight(.medium))
+                        .font(.title.weight(.medium))
                         .foregroundStyle(.secondary)
                         .frame(
                             width: LauncherMetrics.searchBarControlSize,
