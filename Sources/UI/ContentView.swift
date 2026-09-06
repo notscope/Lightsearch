@@ -10,7 +10,7 @@ import SwiftUI
 enum LauncherMetrics {
     static let panelWidth: CGFloat = 720
     static let clipboardListWidth: CGFloat = 300
-    static let collapsedHeight: CGFloat = 64
+    static let collapsedHeight: CGFloat = 48
     static let dividerHeight: CGFloat = 1
     static var dividerColor: Color {
         Color.primary.opacity(0.10)
