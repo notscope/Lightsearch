@@ -323,8 +323,6 @@ struct ContentView: View {
             ConversionResultCard(
                 conversion: conversion,
                 isSelected: state.selectedIndex == index,
-                shortcutNumber: shortcutNumber,
-                isCommandPressed: isCommandPressed,
                 onSelect: {
                     state.selectedIndex = index
                 },
@@ -695,8 +693,6 @@ private struct RecentFileCard: View {
 private struct ConversionResultCard: View {
     let conversion: ConversionResult
     let isSelected: Bool
-    var shortcutNumber: Int? = nil
-    var isCommandPressed: Bool = false
     let onSelect: () -> Void
     let onOpen: () -> Void
 
@@ -728,12 +724,6 @@ private struct ConversionResultCard: View {
                 .textCase(.uppercase)
                 .tracking(0.8)
                 .padding(.bottom, 6)
-        }
-        .overlay(alignment: .topTrailing) {
-            if isCommandPressed, let shortcutNumber {
-                KeyboardHintBadge(shortcutNumber)
-                    .padding(8)
-            }
         }
         .background {
             RoundedRectangle(cornerRadius: LauncherMetrics.rowCornerRadius, style: .continuous)
