@@ -85,4 +85,20 @@ final class SystemPreferencesTests: XCTestCase {
 
         XCTAssertGreaterThan(matchCount, 0)
     }
+
+    func testSystemPreferencesNavigationPathSubtitle() {
+        let prefs = SystemPreferencesScanner.scan()
+        XCTAssertFalse(prefs.isEmpty, "Should discover preferences")
+
+        for pref in prefs {
+            guard let subtitle = pref.subtitle else {
+                XCTFail("Preference \(pref.title) must have a non-nil navigation path subtitle")
+                continue
+            }
+            XCTAssertTrue(
+                subtitle.hasPrefix("System Settings → "),
+                "Preference \(pref.title) subtitle '\(subtitle)' must start with 'System Settings → '"
+            )
+        }
+    }
 }

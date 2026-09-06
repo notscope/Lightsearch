@@ -407,6 +407,7 @@ struct ContentView: View {
             SearchResultRow(
                 title: application.name,
                 subtitle: application.bundleIdentifier ?? application.path,
+                isSubtitleMonospaced: true,
                 kind: "Application",
                 icon: WorkspaceIconView(path: application.path),
                 isSelected: state.selectedIndex == index,
@@ -771,6 +772,7 @@ private struct ConversionResultCard: View {
 private struct SearchResultRow<Icon: View>: View {
     let title: String
     let subtitle: String?
+    var isSubtitleMonospaced: Bool = false
     var kind: String? = nil
     let icon: Icon
     let isSelected: Bool
@@ -793,7 +795,7 @@ private struct SearchResultRow<Icon: View>: View {
 
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(.subheadline, design: .monospaced))
+                        .font(.system(.subheadline, design: isSubtitleMonospaced ? .monospaced : .default))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

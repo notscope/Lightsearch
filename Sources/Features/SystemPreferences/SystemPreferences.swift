@@ -101,10 +101,11 @@ enum SystemPreferencesScanner {
             parentSearchTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.index))
         }
 
+        let parentNavigationPath = "System Settings → \(parentTitle)"
         let parent = SystemPreference(
             id: bundleIdentifier,
             title: parentTitle,
-            subtitle: nil,
+            subtitle: parentNavigationPath,
             iconPath: iconPath,
             urlString: makeURLString(bundleIdentifier: bundleIdentifier),
             searchableTokens: parentSearchTokens,
@@ -122,10 +123,18 @@ enum SystemPreferencesScanner {
             var childTokens = parentTitleTokens
             childTokens.append(contentsOf: childTitleTokens)
             childTokens.append(contentsOf: SystemPreferenceSearch.tokens(from: entry.index))
+
+            let childNavigationPath: String
+            if entry.title.localizedCaseInsensitiveCompare(parentTitle) == .orderedSame {
+                childNavigationPath = "System Settings → \(parentTitle)"
+            } else {
+                childNavigationPath = "System Settings → \(parentTitle) → \(entry.title)"
+            }
+
             return SystemPreference(
                 id: "\(bundleIdentifier)#\(entry.sectionKey)#\(index)",
                 title: entry.title,
-                subtitle: parentTitle,
+                subtitle: childNavigationPath,
                 iconPath: iconPath,
                 urlString: makeURLString(
                     bundleIdentifier: bundleIdentifier,
