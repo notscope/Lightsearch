@@ -23,6 +23,8 @@ final class LauncherState: ObservableObject {
     @Published private(set) var isLoading = true
     @Published var selectedIndex = 0
     @Published var isCommandPressed = false
+    @Published var isClipboardFilterPresented = false
+    @Published var focusedClipboardFilter: ClipboardFilter = .all
 
     private var hasStartedLoading = false
     private var directoryWatcher: ApplicationDirectoryWatcher?
@@ -224,6 +226,7 @@ final class LauncherState: ObservableObject {
         page = .applications
         query = ""
         selectedIndex = 0
+        isClipboardFilterPresented = false
     }
 
     func enterFileSearch() {
@@ -233,6 +236,7 @@ final class LauncherState: ObservableObject {
         features.enter(page: .files)
         query = ""
         selectedIndex = 0
+        isClipboardFilterPresented = false
     }
 
     func exitFileSearch() {
@@ -240,6 +244,7 @@ final class LauncherState: ObservableObject {
         page = .applications
         query = ""
         selectedIndex = 0
+        isClipboardFilterPresented = false
     }
 
     func enterClipboardHistory() {
@@ -249,6 +254,8 @@ final class LauncherState: ObservableObject {
         features.enter(page: .clipboard)
         query = ""
         selectedIndex = 0
+        isClipboardFilterPresented = false
+        focusedClipboardFilter = clipboardFilter
     }
 
     func exitClipboardHistory() {
@@ -256,10 +263,44 @@ final class LauncherState: ObservableObject {
         page = .applications
         query = ""
         selectedIndex = 0
+        isClipboardFilterPresented = false
+    }
+
+    func openClipboardFilterDropdown() {
+        focusedClipboardFilter = clipboardFilter
+        isClipboardFilterPresented = true
+    }
+
+    func closeClipboardFilterDropdown() {
+        isClipboardFilterPresented = false
+    }
+
+    func toggleClipboardFilterPresented() {
+        if isClipboardFilterPresented {
+            closeClipboardFilterDropdown()
+        } else {
+            openClipboardFilterDropdown()
+        }
+    }
+
+    func moveFocusedClipboardFilter(by offset: Int) {
+        let all = ClipboardFilter.allCases
+        guard let currentIndex = all.firstIndex(of: focusedClipboardFilter) else {
+            focusedClipboardFilter = .all
+            return
+        }
+        let nextIndex = (currentIndex + offset + all.count) % all.count
+        focusedClipboardFilter = all[nextIndex]
+    }
+
+    func applyFocusedClipboardFilter() {
+        setClipboardFilter(focusedClipboardFilter)
+        closeClipboardFilterDropdown()
     }
 
     func setClipboardFilter(_ filter: ClipboardFilter) {
         features.clipboard?.setFilter(filter)
+        focusedClipboardFilter = filter
         selectedIndex = 0
     }
 

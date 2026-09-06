@@ -390,6 +390,25 @@ final class LauncherController: NSObject, NSWindowDelegate {
 
             if event.modifierFlags.contains(.command),
                let chars = event.charactersIgnoringModifiers,
+               chars.lowercased() == "t" {
+                if self.state.isClipboardPage {
+                    self.state.toggleClipboardFilterPresented()
+                    return nil
+                }
+            }
+
+            if self.state.isClipboardFilterPresented,
+               let chars = event.charactersIgnoringModifiers,
+               let digit = Int(chars),
+               digit >= 1 && digit <= ClipboardFilter.allCases.count {
+                let filter = ClipboardFilter.allCases[digit - 1]
+                self.state.setClipboardFilter(filter)
+                self.state.closeClipboardFilterDropdown()
+                return nil
+            }
+
+            if event.modifierFlags.contains(.command),
+               let chars = event.charactersIgnoringModifiers,
                let digit = Int(chars),
                digit >= 1 && digit <= LauncherMetrics.visibleEntryCount {
                 let targetIndex = digit - 1
@@ -400,6 +419,10 @@ final class LauncherController: NSObject, NSWindowDelegate {
 
             switch event.keyCode {
             case UInt16(kVK_Escape):
+                if self.state.isClipboardFilterPresented {
+                    self.state.closeClipboardFilterDropdown()
+                    return nil
+                }
                 if self.isClipboardActionsPresented {
                     return event
                 }
@@ -410,18 +433,30 @@ final class LauncherController: NSObject, NSWindowDelegate {
                 }
                 return nil
             case UInt16(kVK_UpArrow):
+                if self.state.isClipboardFilterPresented {
+                    self.state.moveFocusedClipboardFilter(by: -1)
+                    return nil
+                }
                 if self.isClipboardActionsPresented {
                     return event
                 }
                 self.state.moveSelection(by: -1)
                 return nil
             case UInt16(kVK_DownArrow):
+                if self.state.isClipboardFilterPresented {
+                    self.state.moveFocusedClipboardFilter(by: 1)
+                    return nil
+                }
                 if self.isClipboardActionsPresented {
                     return event
                 }
                 self.state.moveSelection(by: 1)
                 return nil
             case UInt16(kVK_Return), UInt16(kVK_ANSI_KeypadEnter):
+                if self.state.isClipboardFilterPresented {
+                    self.state.applyFocusedClipboardFilter()
+                    return nil
+                }
                 if self.isClipboardActionsPresented {
                     return event
                 }
@@ -450,6 +485,17 @@ final class LauncherController: NSObject, NSWindowDelegate {
                         self.copyClipboardEntryToPasteboard(entry)
                         return nil
                     }
+                }
+                return event
+            case UInt16(kVK_Tab):
+                if self.state.isClipboardPage && !self.isClipboardActionsPresented {
+                    if self.state.isClipboardFilterPresented {
+                        let backwards = event.modifierFlags.contains(.shift)
+                        self.state.moveFocusedClipboardFilter(by: backwards ? -1 : 1)
+                    } else {
+                        self.state.openClipboardFilterDropdown()
+                    }
+                    return nil
                 }
                 return event
             default:

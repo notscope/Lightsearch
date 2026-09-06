@@ -106,8 +106,28 @@ struct ClipboardHistoryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     .zIndex(4)
             }
+
+            if state.isClipboardFilterPresented {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        state.closeClipboardFilterDropdown()
+                    }
+                    .accessibilityHidden(true)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(5)
+
+                clipboardFilterDropdown
+                    .padding(.top, LauncherMetrics.collapsedHeight + 6)
+                    .padding(.trailing, LauncherMetrics.searchBarHorizontalInset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .zIndex(6)
+            }
         }
         .onChange(of: isActionsPresented) { _, isPresented in
+            if isPresented {
+                state.closeClipboardFilterDropdown()
+            }
             onActionsPresentedChanged(isPresented || isClearConfirmationPresented)
             focusedAction = isPresented ? .pasteToClipboard : nil
         }
@@ -137,36 +157,85 @@ struct ClipboardHistoryView: View {
                 .help("Back to applications")
             },
             trailingContent: {
-                Menu {
-                    ForEach(ClipboardFilter.allCases) { filter in
-                        Button {
-                            state.setClipboardFilter(filter)
-                        } label: {
-                            if state.clipboardFilter == filter {
-                                Label(filter.title, systemImage: "checkmark")
-                            } else {
-                                Text(filter.title)
-                            }
-                        }
+                Button {
+                    if isActionsPresented {
+                        dismissActions()
                     }
+                    state.toggleClipboardFilterPresented()
                 } label: {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         Image(systemName: state.clipboardFilter.systemImageName)
                             .font(.title3.weight(.medium))
                         Text(state.clipboardFilter.title)
                             .font(.title3)
                         Image(systemName: "chevron.down")
                             .font(.caption.weight(.bold))
+                        KeycapView(symbol: "⌘T")
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(state.isClipboardFilterPresented ? Color.primary : Color.secondary)
                     .contentShape(Rectangle())
                 }
-                .menuStyle(.borderlessButton)
+                .buttonStyle(.plain)
                 .fixedSize()
-                .accessibilityLabel("Clipboard type filter")
-                .help("Filter clipboard entries by type")
+                .accessibilityLabel("Clipboard type filter, shortcut Command-T")
+                .help("Filter clipboard entries by type (⌘T)")
             }
         )
+    }
+
+    private var clipboardFilterDropdown: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(ClipboardFilter.allCases.enumerated()), id: \.element.id) { index, filter in
+                let isSelected = state.clipboardFilter == filter
+                let isFocused = state.focusedClipboardFilter == filter
+                Button {
+                    state.setClipboardFilter(filter)
+                    state.closeClipboardFilterDropdown()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.primary)
+                            .opacity(isSelected ? 1 : 0)
+                            .frame(width: 14)
+                        Image(systemName: filter.systemImageName)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 16)
+                        Text(filter.title)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Text("\(index + 1)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                    .background {
+                        if isFocused {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(Color.primary.opacity(0.12))
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .onHover { isHovering in
+                    if isHovering {
+                        state.focusedClipboardFilter = filter
+                    }
+                }
+            }
+        }
+        .padding(6)
+        .frame(width: 180)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
+        }
+        .shadow(color: .black.opacity(0.24), radius: 12, y: 4)
     }
 
     private var clipboardList: some View {
@@ -410,6 +479,7 @@ struct ClipboardHistoryView: View {
             .accessibilityLabel("Paste to \(state.clipboardTargetApplicationName)")
 
             Button {
+                state.closeClipboardFilterDropdown()
                 isActionsPresented.toggle()
             } label: {
                 HStack(spacing: 5) {

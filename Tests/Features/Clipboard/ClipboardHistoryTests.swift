@@ -55,6 +55,51 @@ final class ClipboardHistoryTests: XCTestCase {
         XCTAssertEqual(ClipboardFilter.color.systemImageName, "eyedropper")
     }
 
+    func testClipboardFilterDropdownKeyboardStateAndNavigation() {
+        let state = LauncherState()
+        state.enterClipboardHistory()
+
+        XCTAssertFalse(state.isClipboardFilterPresented)
+        XCTAssertEqual(state.clipboardFilter, .all)
+
+        // Open dropdown
+        state.openClipboardFilterDropdown()
+        XCTAssertTrue(state.isClipboardFilterPresented)
+        XCTAssertEqual(state.focusedClipboardFilter, .all)
+
+        // Navigate forward
+        state.moveFocusedClipboardFilter(by: 1)
+        XCTAssertEqual(state.focusedClipboardFilter, .text)
+
+        state.moveFocusedClipboardFilter(by: 1)
+        XCTAssertEqual(state.focusedClipboardFilter, .link)
+
+        // Navigate backwards and wrap around
+        state.moveFocusedClipboardFilter(by: -2)
+        XCTAssertEqual(state.focusedClipboardFilter, .all)
+        state.moveFocusedClipboardFilter(by: -1)
+        XCTAssertEqual(state.focusedClipboardFilter, .color)
+
+        // Apply focused filter
+        state.applyFocusedClipboardFilter()
+        XCTAssertFalse(state.isClipboardFilterPresented)
+        XCTAssertEqual(state.clipboardFilter, .color)
+
+        // Toggle dropdown
+        state.toggleClipboardFilterPresented()
+        XCTAssertTrue(state.isClipboardFilterPresented)
+        XCTAssertEqual(state.focusedClipboardFilter, .color)
+
+        state.toggleClipboardFilterPresented()
+        XCTAssertFalse(state.isClipboardFilterPresented)
+
+        // Exit or reset closes dropdown
+        state.openClipboardFilterDropdown()
+        XCTAssertTrue(state.isClipboardFilterPresented)
+        state.exitClipboardHistory()
+        XCTAssertFalse(state.isClipboardFilterPresented)
+    }
+
     func testColorCodecNormalizesSupportedHexFormatsAndRejectsInvalidValues() {
         let supportedValues: [String: String] = [
             "#4e2f88": "#4E2F88",
