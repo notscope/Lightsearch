@@ -163,14 +163,13 @@ struct ClipboardHistoryView: View {
                     }
                     state.toggleClipboardFilterPresented()
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         Image(systemName: state.clipboardFilter.systemImageName)
                             .font(.title3.weight(.medium))
                         Text(state.clipboardFilter.title)
                             .font(.title3)
                         Image(systemName: "chevron.down")
                             .font(.caption.weight(.bold))
-                        KeycapView(symbol: "⌘T")
                     }
                     .foregroundStyle(state.isClipboardFilterPresented ? Color.primary : Color.secondary)
                     .contentShape(Rectangle())
