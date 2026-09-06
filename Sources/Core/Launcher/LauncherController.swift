@@ -44,7 +44,6 @@ final class LauncherController: NSObject, NSWindowDelegate {
         panel.acceptsMouseMovedEvents = false
         panel.animationBehavior = .none
         panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
         // Inherit the app's effective appearance so Liquid Glass follows the
