@@ -180,6 +180,10 @@ enum ClipboardFilter: String, CaseIterable, Codable, Identifiable, Sendable {
         }
     }
 
+    var systemImageName: String {
+        entryKind?.systemImageName ?? "list.bullet"
+    }
+
     var entryKind: ClipboardEntryKind? {
         switch self {
         case .all:

@@ -46,6 +46,15 @@ final class ClipboardHistoryTests: XCTestCase {
         XCTAssertEqual(fileEntry?.fileURLs.count, 2)
     }
 
+    func testClipboardFilterSystemImageNames() {
+        XCTAssertEqual(ClipboardFilter.all.systemImageName, "list.bullet")
+        XCTAssertEqual(ClipboardFilter.text.systemImageName, "doc.text")
+        XCTAssertEqual(ClipboardFilter.link.systemImageName, "link")
+        XCTAssertEqual(ClipboardFilter.image.systemImageName, "photo")
+        XCTAssertEqual(ClipboardFilter.file.systemImageName, "doc")
+        XCTAssertEqual(ClipboardFilter.color.systemImageName, "eyedropper")
+    }
+
     func testColorCodecNormalizesSupportedHexFormatsAndRejectsInvalidValues() {
         let supportedValues: [String: String] = [
             "#4e2f88": "#4E2F88",

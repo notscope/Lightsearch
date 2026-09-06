@@ -151,7 +151,7 @@ struct ClipboardHistoryView: View {
                     }
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "list.bullet")
+                        Image(systemName: state.clipboardFilter.systemImageName)
                             .font(.title3.weight(.medium))
                         Text(state.clipboardFilter.title)
                             .font(.title3)
