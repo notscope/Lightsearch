@@ -1,7 +1,3 @@
-//
-//  UnitConversionTests.swift
-//  LightsearchTests
-//
 // Correctness and contract tests for the calculator unit-conversion engine.
 
 import Foundation

@@ -1,8 +1,3 @@
-//
-//  LauncherFeatures.swift
-//  Lightsearch
-//
-
 import Foundation
 
 enum LauncherFeatureResultPlacement: Equatable {

@@ -1,8 +1,3 @@
-//
-// ConversionUnits+Angle.swift
-// Lightsearch
-//
-
 import Foundation
 
 extension ConversionUnitCatalog {

@@ -1,9 +1,4 @@
-//
-//  LightsearchApp.swift
-//  Lightsearch
-//
 //  Lightsearch application entry point.
-//
 
 import AppKit
 import SwiftUI

@@ -1,7 +1,3 @@
-//
-//  FileSearch.swift
-//  Lightsearch
-//
 // Optional file-search feature implementation.
 
 import Foundation

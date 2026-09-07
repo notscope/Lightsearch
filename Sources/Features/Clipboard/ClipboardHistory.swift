@@ -1,7 +1,3 @@
-//
-//  ClipboardHistory.swift
-//  Lightsearch
-//
 // Local clipboard history models, pasteboard import/export, and encrypted
 // persistence. Clipboard contents never leave this process or the local
 // encrypted history file.

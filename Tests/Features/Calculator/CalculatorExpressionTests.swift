@@ -1,8 +1,3 @@
-//
-//  CalculatorExpressionTests.swift
-//  LightsearchTests
-//
-
 import XCTest
 @testable import Lightsearch
 

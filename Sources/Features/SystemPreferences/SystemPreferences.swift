@@ -1,7 +1,3 @@
-//
-//  SystemPreferences.swift
-//  Lightsearch
-//
 // Optional System Settings feature implementation.
 
 import Foundation

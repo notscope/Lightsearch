@@ -1,8 +1,3 @@
-//
-//  ColorPickerController.swift
-//  Lightsearch
-//
-
 import AppKit
 
 @MainActor

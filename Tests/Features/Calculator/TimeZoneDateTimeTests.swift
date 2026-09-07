@@ -1,7 +1,3 @@
-//
-//  TimeZoneDateTimeTests.swift
-//  LightsearchTests
-//
 // Regression and correctness tests for TimeZone resolution, country labels,
 // and date-time conversions in the optional Calculator feature.
 

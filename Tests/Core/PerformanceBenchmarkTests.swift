@@ -1,8 +1,3 @@
-//
-//  PerformanceBenchmarkTests.swift
-//  LightsearchTests
-//
-
 import Darwin
 import Foundation
 import XCTest

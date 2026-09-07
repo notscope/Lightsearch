@@ -1,8 +1,3 @@
-//
-//  LauncherResult.swift
-//  Lightsearch
-//
-
 import Foundation
 
 let fileSearchActionID = "io.notscope.Lightsearch.action.file-search"

@@ -1,8 +1,3 @@
-//
-//  SearchOperatorTests.swift
-//  LightsearchTests
-//
-
 import Foundation
 import XCTest
 @testable import Lightsearch

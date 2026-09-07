@@ -1,8 +1,3 @@
-//
-//  LauncherQueryParser.swift
-//  Lightsearch
-//
-
 import Foundation
 
 enum SearchKindFilter: String, CaseIterable, Equatable, Sendable {

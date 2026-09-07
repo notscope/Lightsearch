@@ -1,7 +1,3 @@
-//
-//  ClipboardHistoryTests.swift
-//  LightsearchTests
-//
 // Correctness, privacy, and persistence tests for clipboard history.
 
 import AppKit

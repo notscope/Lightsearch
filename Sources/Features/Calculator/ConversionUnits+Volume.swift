@@ -1,8 +1,3 @@
-//
-// ConversionUnits+Volume.swift
-// Lightsearch
-//
-
 import Foundation
 
 extension ConversionUnitCatalog {

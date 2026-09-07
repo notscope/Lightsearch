@@ -1,7 +1,3 @@
-//
-//  CalculatorExpression.swift
-//  Lightsearch
-//
 // Optional calculator feature implementation. This file contains the small,
 // dependency-free expression parser used for arithmetic queries.
 

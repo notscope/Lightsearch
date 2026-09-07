@@ -1,7 +1,3 @@
-//
-//  ClipboardHistoryView.swift
-//  Lightsearch
-//
 // Clipboard history presentation based on the supplied two-pane design.
 
 import AppKit

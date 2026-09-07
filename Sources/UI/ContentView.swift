@@ -1,9 +1,3 @@
-//
-//  ContentView.swift
-//  Lightsearch
-//
-//
-
 import AppKit
 import SwiftUI
 

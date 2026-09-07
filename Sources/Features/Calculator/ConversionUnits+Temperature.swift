@@ -1,8 +1,3 @@
-//
-// ConversionUnits+Temperature.swift
-// Lightsearch
-//
-
 import Foundation
 
 extension ConversionUnitCatalog {

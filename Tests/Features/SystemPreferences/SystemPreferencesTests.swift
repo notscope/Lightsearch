@@ -1,7 +1,3 @@
-//
-//  SystemPreferencesTests.swift
-//  LightsearchTests
-//
 // Benchmark and search ranking regression suite for the optional System Preferences feature.
 
 import Darwin

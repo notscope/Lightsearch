@@ -1,8 +1,3 @@
-//
-//  ColorPickerFeature.swift
-//  Lightsearch
-//
-
 import Foundation
 
 @MainActor

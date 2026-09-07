@@ -1,8 +1,3 @@
-//
-// ConversionUnits+Pressure.swift
-// Lightsearch
-//
-
 import Foundation
 
 extension ConversionUnitCatalog {

@@ -1,8 +1,3 @@
-//
-//  LauncherState.swift
-//  Lightsearch
-//
-
 import Combine
 import Foundation
 

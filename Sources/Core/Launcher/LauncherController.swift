@@ -1,8 +1,3 @@
-//
-//  LauncherController.swift
-//  Lightsearch
-//
-
 import AppKit
 import Carbon.HIToolbox
 import CoreGraphics

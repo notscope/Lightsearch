@@ -1,7 +1,3 @@
-//
-//  ClipboardFeature.swift
-//  Lightsearch
-//
 // Clipboard capture and clipboard-history page state.
 
 import AppKit

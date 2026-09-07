@@ -1,8 +1,3 @@
-//
-//  CalculatorFeature.swift
-//  Lightsearch
-//
-
 import Foundation
 
 @MainActor

@@ -1,8 +1,3 @@
-//
-//  ApplicationSearch.swift
-//  Lightsearch
-//
-
 import Darwin
 import Foundation
 

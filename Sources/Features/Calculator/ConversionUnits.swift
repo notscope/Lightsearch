@@ -1,8 +1,3 @@
-//
-// ConversionUnits.swift
-// Lightsearch
-//
-
 import Foundation
 
 enum ConversionCategory: String {
