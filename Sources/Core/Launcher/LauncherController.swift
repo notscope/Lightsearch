@@ -20,6 +20,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     private var pasteTargetApplication: NSRunningApplication?
     private var isClipboardActionsPresented = false
     private let colorPickerController = ColorPickerController()
+    private var commandHintWorkItem: DispatchWorkItem?
 
     private let panel: LauncherPanel
 
@@ -137,7 +138,8 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     func show() {
-        state.isCommandPressed = NSEvent.modifierFlags.contains(.command)
+        state.isCommandPressed = false
+        updateCommandModifierState(isCommandPressed: NSEvent.modifierFlags.contains(.command))
         rememberPasteTargetApplication()
         state.loadIfNeeded()
         state.refreshApplicationsIfNeeded()
@@ -222,6 +224,8 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     func hide() {
+        commandHintWorkItem?.cancel()
+        commandHintWorkItem = nil
         state.isCommandPressed = false
         colorPickerController.cancel()
         guard panel.isVisible else { return }
@@ -371,15 +375,40 @@ final class LauncherController: NSObject, NSWindowDelegate {
         panel.setFrame(resizedFrame, display: true, animate: false)
     }
 
+    private func updateCommandModifierState(isCommandPressed: Bool) {
+        commandHintWorkItem?.cancel()
+        commandHintWorkItem = nil
+
+        if isCommandPressed {
+            guard !state.isCommandPressed else { return }
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self, self.panel.isVisible else { return }
+                guard NSEvent.modifierFlags.contains(.command) else { return }
+                withAnimation(.easeInOut(duration: 0.12)) {
+                    self.state.isCommandPressed = true
+                }
+            }
+            commandHintWorkItem = workItem
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + LauncherMetrics.commandHintDelay,
+                execute: workItem
+            )
+        } else {
+            if state.isCommandPressed {
+                withAnimation(.easeOut(duration: 0.08)) {
+                    state.isCommandPressed = false
+                }
+            }
+        }
+    }
+
     private func installLocalKeyMonitor() {
         localFlagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             guard let self, self.panel.isVisible else {
                 return event
             }
             let isCmd = event.modifierFlags.contains(.command)
-            if self.state.isCommandPressed != isCmd {
-                self.state.isCommandPressed = isCmd
-            }
+            self.updateCommandModifierState(isCommandPressed: isCmd)
             return event
         }
 
@@ -544,7 +573,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     }
 
     func windowDidResignKey(_ notification: Notification) {
-        state.isCommandPressed = false
+        updateCommandModifierState(isCommandPressed: false)
         // Keep the panel visible while AppKit is moving focus between the
         // search field and its child controls. applicationDidResignActive is
         // the actual outside-click boundary.
