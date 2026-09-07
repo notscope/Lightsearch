@@ -7,3 +7,7 @@ DerivedData/
 # Per-user Xcode state
 xcuserdata/
 *.xcuserstate
+
+# Local documentation and macOS metadata
+docs/
+.DS_Store
