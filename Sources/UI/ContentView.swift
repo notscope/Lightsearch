@@ -33,7 +33,7 @@ enum LauncherMetrics {
     static let cornerRadius: CGFloat = 16
     static let rowCornerRadius: CGFloat = 10
     static let visibleEntryCount: Int = 7
-    static let commandHintDelay: TimeInterval = 0.5
+    static let commandHintDelay: TimeInterval = 0.25
 
     /// A conversion card occupies the same vertical space as two rows.
     static var conversionCardHeight: CGFloat {
