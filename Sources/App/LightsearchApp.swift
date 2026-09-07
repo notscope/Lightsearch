@@ -2,7 +2,7 @@
 //  LightsearchApp.swift
 //  Lightsearch
 //
-//  Created by Lightsearch on 02/09/26.
+//  Lightsearch application entry point.
 //
 
 import AppKit
